@@ -1,14 +1,6 @@
 import { useState, type ReactNode } from "react";
+import { FEEDBACK_PROMPT } from "../content/feedbackPrompt";
 import { TOTAL_MINUTES } from "../content/phases";
-
-const FEEDBACK_PROMPT = `Act as a senior engineer interviewing me for a system design role. Below is my answer from a mock interview, exported as Markdown.
-
-1. Grade each phase (strong / acceptable / weak) and explain why.
-2. List the three most important gaps or mistakes, including wrong estimates and missing trade-offs.
-3. Point out failure modes I didn't consider.
-4. Say what a strong candidate would have done differently, and what I should practice next.
-
-Be direct and specific. Don't soften the feedback.`;
 
 interface Step {
   title: string;
@@ -45,7 +37,8 @@ const STEPS: Step[] = [
     body: (
       <>
         Tick the self-review, then export everything as Markdown: the question, your answers, the diagram as Mermaid and your timing.
-        Give the file to an AI assistant or a friend and ask for critical feedback, not encouragement.
+        The export ends with a feedback prompt, so you can paste the whole file into an AI assistant and get critical feedback, not
+        encouragement. Or send it to a friend.
       </>
     ),
     uses: ["Self-review", "Markdown export"],
@@ -88,7 +81,7 @@ function FeedbackPrompt() {
 
   return (
     <details className="guide-prompt">
-      <summary>Feedback prompt to paste with your export</summary>
+      <summary>The feedback prompt included in every export</summary>
       <pre className="guide-prompt-text">{FEEDBACK_PROMPT}</pre>
       <div className="guide-prompt-foot">
         <span role="status">{status}</span>

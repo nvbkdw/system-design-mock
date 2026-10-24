@@ -111,7 +111,7 @@ export function DiagramLauncher({ hasDiagram, onOpen }: { hasDiagram: boolean; o
       <span className="diagram-launcher-mark" aria-hidden="true" />
       <div className="diagram-launcher-text">
         <strong>Diagram</strong>
-        <span>{hasDiagram ? "Your diagram is saved. Open it to keep drawing." : "Sketch boxes and arrows next to your answers. Shared by all phases."}</span>
+        <span>{hasDiagram ? "Your diagram is saved. Open it to keep drawing." : "Sketch boxes and arrows next to your answers."}</span>
       </div>
       <button type="button" className="btn" onClick={onOpen}>
         {hasDiagram ? "Show diagram" : "Open diagram"}

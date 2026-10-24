@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
+import { FEEDBACK_PROMPT } from "../content/feedbackPrompt";
 import { PHASES, RUBRIC } from "../content/phases";
 import type { Question } from "../content/types";
 import { emptyRecord } from "./storage";
@@ -73,6 +74,13 @@ describe("toMarkdown", () => {
     const record = emptyRecord();
     const md = toMarkdown({ question, title: "T", statement: "S", record, timing: record.timing, phases: PHASES, rubric: RUBRIC });
     expect(md).not.toContain("## Diagram");
+  });
+
+  it("ends with the feedback prompt, after the self-review", () => {
+    const record = emptyRecord();
+    const md = toMarkdown({ question, title: "T", statement: "S", record, timing: record.timing, phases: PHASES, rubric: RUBRIC });
+    expect(md.endsWith("## Feedback request\n\n" + FEEDBACK_PROMPT + "\n")).toBe(true);
+    expect(md.indexOf("## Self-review")).toBeLessThan(md.indexOf("## Feedback request"));
   });
 
   it("omits timing for untimed practice", () => {

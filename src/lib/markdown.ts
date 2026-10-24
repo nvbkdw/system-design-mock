@@ -3,6 +3,7 @@ import TurndownService from "turndown";
 import { gfm } from "turndown-plugin-gfm";
 import type { Phase, Question, RubricItem } from "../content/types";
 import { toMermaid } from "../diagram/mermaid";
+import { FEEDBACK_PROMPT } from "../content/feedbackPrompt";
 import type { AnswerRecord, Timing } from "./storage";
 import { formatClock, localDate, wholeSeconds } from "./time";
 
@@ -85,6 +86,9 @@ export function toMarkdown({ title, statement, record, timing, phases, rubric, n
   lines.push("## Self-review", "");
   for (const item of rubric) lines.push(`- [${record.rubric[item.id] ? "x" : " "}] ${item.text}`);
   lines.push("");
+
+  // Ready to paste into an AI assistant as-is.
+  lines.push("## Feedback request", "", FEEDBACK_PROMPT, "");
   return lines.join("\n");
 }
 

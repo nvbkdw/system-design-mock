@@ -1,11 +1,11 @@
 import { useEffect, useRef } from "react";
-import { Link } from "react-router-dom";
 import { PHASES } from "../content/phases";
 import { formatClock } from "../lib/time";
 import type { PhaseTimer } from "../timer/PhaseTimer";
 import { WARNING_MS } from "../timer/PhaseTimer";
 import { useTimerState } from "../timer/useTimerState";
 import { ArmedButton } from "../ui/ArmedButton";
+import { SiteBrand } from "../ui/SiteBrand";
 import { Switch } from "../ui/Switch";
 
 interface TopBarProps {
@@ -53,9 +53,7 @@ export function TopBar(props: TopBarProps) {
   return (
     <header className="topbar" ref={header}>
       <div className="wrap topbar-inner">
-        <Link className="back" to="/">
-          ← Question bank
-        </Link>
+        <SiteBrand />
         {timed && (
           <div className="clock" aria-label="Interview clock">
             <span className="clock-phase">{phaseLabel}</span>

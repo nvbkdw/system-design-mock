@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import { DIFFICULTIES } from "../content/questionFormat";
 import { TOTAL_MINUTES } from "../content/phases";
 import { ALL_QUESTIONS, QUESTION_BANK, isCustom } from "../content/questions";
@@ -7,6 +6,7 @@ import type { Difficulty } from "../content/types";
 import { contributingUrl } from "../lib/repo";
 import { loadRecord, questionStatus, type Status } from "../lib/storage";
 import { PhaseStrip } from "../ui/PhaseStrip";
+import { SiteBrand } from "../ui/SiteBrand";
 import { PracticeGuide } from "./PracticeGuide";
 import { QuestionCard } from "./QuestionCard";
 import "./home.css";
@@ -62,9 +62,7 @@ export function HomePage() {
     <>
       <header className="site-header">
         <div className="wrap header-inner">
-          <Link className="brand" to="/">
-            System Design Interview Mock
-          </Link>
+          <SiteBrand />
           {contributeHref && (
             <a className="header-link" href={contributeHref}>
               Add a question
