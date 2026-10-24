@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { DIFFICULTIES } from "../content/questionFormat";
 import { TOTAL_MINUTES } from "../content/phases";
 import { ALL_QUESTIONS, QUESTION_BANK, isCustom } from "../content/questions";
@@ -60,9 +61,9 @@ export function HomePage() {
     <>
       <header className="site-header">
         <div className="wrap header-inner">
-          <a className="brand" href="#/">
+          <Link className="brand" to="/">
             System Design Interview Mock
-          </a>
+          </Link>
           {contributeHref && (
             <a className="header-link" href={contributeHref}>
               Add a question
