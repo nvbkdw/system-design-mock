@@ -7,6 +7,7 @@ import type { Difficulty } from "../content/types";
 import { contributingUrl } from "../lib/repo";
 import { loadRecord, questionStatus, type Status } from "../lib/storage";
 import { PhaseStrip } from "../ui/PhaseStrip";
+import { PracticeGuide } from "./PracticeGuide";
 import { QuestionCard } from "./QuestionCard";
 import "./home.css";
 
@@ -74,16 +75,27 @@ export function HomePage() {
 
       <main className="wrap">
         <section className="intro">
+          <p className="eyebrow">Deliberate practice makes perfect</p>
           <h1 className="intro-title">Practice system design the way the interview runs.</h1>
-          <p className="intro-lede">
-            Pick a question and work through six phases in {TOTAL_MINUTES} minutes of design time. Write your answer for each
-            phase, then export everything as Markdown. Turn on timed mode for a real-pace mock.
-          </p>
+          <div className="intro-lede">
+            <p>
+              A system design interview usually runs 60 minutes. After introductions and your questions at the end, about{" "}
+              {TOTAL_MINUTES} minutes are left for the design itself. Knowing the material is only part of it. The rest is spending those
+              minutes well: clarifying before drawing, estimating before scaling, and going deep where it matters.
+            </p>
+            <p>
+              This tool recreates that session. Every question is split into the six phases an interviewer expects, each with a time
+              budget, so you practice the structure and the pacing as well as the answer. However experienced you are, deliberate,
+              repeated practice like this is what improves interview performance.
+            </p>
+          </div>
           <PhaseStrip />
           <p className="progress">
             {bank.length} questions · {done} completed · {draft} in progress
           </p>
         </section>
+
+        <PracticeGuide />
 
         <section className="bank" aria-labelledby="bank-title">
           <div className="bank-head">
