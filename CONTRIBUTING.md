@@ -6,7 +6,7 @@ Thanks for helping. Most contributions are new questions. Each question is one M
 
 ### 1. Set up
 
-You need Node 20.19+ (Node 22 recommended).
+You need Node 20.19+; Node 24 is recommended (`nvm use` picks it up from `.nvmrc`).
 
 ```sh
 git clone <your fork>

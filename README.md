@@ -32,7 +32,7 @@ It's a static, client-side React app. It runs entirely in the browser, deploys t
 
 ## Getting started
 
-Requires Node 20.19+ (Node 22 recommended).
+Requires Node 20.19+; Node 24 is recommended and is what CI uses (see `.nvmrc`).
 
 ```sh
 npm install
