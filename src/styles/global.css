@@ -1,0 +1,87 @@
+/* Theme: GitHub Dark (Primer dark palette). Single dark theme; the app
+   does not follow the OS light setting. Writing surfaces keep a faint dot
+   grid like a whiteboard notebook. */
+:root {
+  color-scheme: dark;
+
+  /* Canvas and surfaces */
+  --paper: #0d1117;         /* canvas.default */
+  --surface: #161b22;       /* canvas.subtle */
+  --field: #0d1117;         /* inputs sit darker than the surface they're on */
+  --code-bg: #0d1117;       /* code blocks, tags, tab tracks */
+  --code-inline: rgba(110, 118, 129, 0.4);
+  --grid: #21262d;
+
+  /* Text and borders */
+  --ink: #e6edf3;           /* fg.default */
+  --muted: #8b949e;         /* fg.muted */
+  --line: #30363d;          /* border.default */
+
+  /* Accent: text/borders use --accent, filled shapes use --accent-strong */
+  --accent: #58a6ff;        /* accent.fg */
+  --accent-strong: #1f6feb; /* accent.emphasis */
+  --accent-soft: rgba(56, 139, 253, 0.15);
+  --on-accent: #ffffff;
+
+  /* Buttons */
+  --btn-bg: #21262d;
+  --btn-hover: #30363d;
+  --btn-border: rgba(240, 246, 252, 0.1);
+  --primary: #238636;       /* GitHub's green primary button */
+  --primary-hover: #2ea043;
+
+  /* Signals */
+  --warn: #d29922;          /* attention.fg */
+  --over: #f85149;          /* danger.fg */
+  --ok: #3fb950;            /* success.fg */
+
+  --shadow: 0 8px 24px rgba(1, 4, 9, 0.75);
+
+  --font-display: "Schibsted Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "IBM Plex Sans", -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --step--1: 0.8125rem;
+  --step-0: 0.9375rem;
+  --step-1: 1.125rem;
+  --step-2: 1.375rem;
+  --step-3: 1.875rem;
+  --step-4: 2.5rem;
+
+  --radius: 10px;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: var(--step-0);
+  line-height: 1.6;
+  padding-block: env(safe-area-inset-top, 0px) env(safe-area-inset-bottom, 0px);
+}
+[hidden] { display: none !important; }
+h1, h2, h3 { font-family: var(--font-display); line-height: 1.2; text-wrap: balance; margin: 0; }
+p { margin: 0; }
+a { color: var(--accent); }
+code, pre, kbd { font-family: var(--font-mono); font-size: 0.9em; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+
+.wrap {
+  width: 100%;
+  max-width: 1120px;
+  margin-inline: auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+.brand { font: 700 var(--step-1) / 1 var(--font-display); color: var(--ink); text-decoration: none; }
+
+.eyebrow { font: 500 0.75rem / 1.4 var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+}
+.loading { padding-block: 3rem; color: var(--muted); }

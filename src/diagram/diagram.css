@@ -1,0 +1,81 @@
+/* React Flow theming through its CSS variables, mapped to the app's tokens. */
+.diagram-flow { position: absolute; inset: 0; }
+.diagram-flow .react-flow {
+  --xy-background-color-default: var(--surface);
+  --xy-background-pattern-dots-color-default: var(--grid);
+  --xy-edge-stroke-default: var(--muted);
+  --xy-edge-stroke-selected-default: var(--accent);
+  --xy-edge-stroke-width-default: 1.5;
+  --xy-edge-label-background-color-default: var(--surface);
+  --xy-edge-label-color-default: var(--ink);
+  --xy-connectionline-stroke-default: var(--accent);
+  --xy-attribution-background-color-default: transparent;
+  --xy-controls-button-background-color-default: var(--btn-bg);
+  --xy-controls-button-background-color-hover-default: var(--btn-hover);
+  --xy-controls-button-color-default: var(--ink);
+  --xy-controls-button-border-color-default: var(--line);
+  --xy-selection-background-color-default: color-mix(in srgb, var(--accent) 10%, transparent);
+  --xy-selection-border-default: 1px dashed var(--accent);
+  font-family: var(--font-body);
+}
+.diagram-flow .react-flow__edge.edge-async .react-flow__edge-path { stroke-dasharray: 6 4; }
+.diagram-flow .react-flow__edge-text { font-size: 12px; }
+.diagram-flow .react-flow__node { font-family: var(--font-body); }
+
+/* ---- boxes ---- */
+.box {
+  position: relative; display: grid; place-items: center;
+  min-width: 120px; max-width: 220px; min-height: 48px; padding: 12px 16px;
+  font-size: 13px; font-weight: 500; line-height: 1.3; text-align: center; color: var(--ink);
+  background: var(--surface); border: 1.5px solid var(--ink); border-radius: 8px;
+}
+.box-label { position: relative; white-space: pre-wrap; overflow-wrap: anywhere; }
+.box-cache { border-radius: 999px; padding-inline: 22px; }
+.box-client { border-radius: 50%; min-height: 60px; padding: 16px 24px; }
+.box-external::before, .box-external::after {
+  content: ""; position: absolute; top: 0; bottom: 0; width: 1.5px; background: var(--ink);
+}
+.box-external::before { left: 7px; }
+.box-external::after { right: 7px; }
+.box-external { padding-inline: 22px; }
+.box-database, .box-queue { background: transparent; border-color: transparent; }
+.box-database { padding: 20px 18px 12px; min-height: 60px; }
+.box-queue { padding-inline: 26px; }
+.box-outline { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.box-outline path, .box-outline polygon { fill: var(--surface); stroke: var(--ink); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.box-outline path[fill="none"] { fill: none; }
+
+.box.is-selected { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.box-database.is-selected, .box-queue.is-selected { border-color: transparent; box-shadow: none; }
+.box.is-selected .box-outline path, .box.is-selected .box-outline polygon { stroke: var(--accent); }
+.box-external.is-selected::before, .box-external.is-selected::after { background: var(--accent); }
+
+.box-handle.react-flow__handle {
+  width: 9px; height: 9px; background: var(--accent); border: 2px solid var(--surface); opacity: 0; transition: opacity 0.1s;
+}
+.box:hover .box-handle, .box.is-selected .box-handle, .react-flow__handle.connectingto, .react-flow__handle.connectingfrom { opacity: 1; }
+
+/* ---- palette & inspector ---- */
+.diagram-palette.react-flow__panel {
+  display: flex; flex-wrap: wrap; gap: 4px; max-width: calc(100% - 24px); padding: 4px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow);
+}
+.palette-btn {
+  display: inline-flex; align-items: center; gap: 0.4rem; font: 500 0.75rem / 1 var(--font-body); color: var(--ink);
+  background: transparent; border: 1px solid transparent; border-radius: 6px; padding: 0.4rem 0.55rem; cursor: pointer;
+}
+.palette-btn:hover { background: var(--btn-hover); border-color: transparent; }
+.palette-icon { width: 16px; height: 11px; border: 1.5px solid currentColor; border-radius: 2px; flex: none; }
+.icon-database { border-radius: 50% / 30%; height: 13px; }
+.icon-queue { clip-path: polygon(20% 0, 80% 0, 100% 50%, 80% 100%, 20% 100%, 0 50%); background: currentColor; border: 0; }
+.icon-cache { border-radius: 999px; }
+.icon-client { border-radius: 50%; width: 13px; height: 13px; }
+.icon-external { box-shadow: inset 3px 0 0 -1.5px currentColor, inset -3px 0 0 -1.5px currentColor; }
+
+.diagram-inspector.react-flow__panel {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; max-width: calc(100% - 24px); padding: 0.4rem;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow);
+}
+.diagram-inspector .input { padding: 0.4rem 0.55rem; }
+.diagram-inspector input.input { width: 13rem; max-width: 100%; }
+.diagram-hint { padding: 0.2rem 0.5rem; font-size: 0.75rem; color: var(--muted); }

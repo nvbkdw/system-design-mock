@@ -1,0 +1,71 @@
+.site-header { border-bottom: 1px solid var(--line); background: var(--surface); }
+.header-inner { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-block: 0.9rem; }
+.header-link { font-size: var(--step--1); font-weight: 500; }
+
+.intro { padding-block: 3rem 2rem; display: grid; gap: 1rem; }
+.intro-title { font-size: clamp(var(--step-3), 5vw, var(--step-4)); letter-spacing: -0.02em; max-width: 20ch; }
+.intro-lede { color: var(--muted); font-size: var(--step-1); max-width: 62ch; }
+.intro .phase-strip { margin-top: 0.5rem; }
+.progress { font: 500 var(--step--1) / 1.4 var(--font-mono); color: var(--muted); }
+
+.bank { padding-block: 1rem 3rem; display: grid; gap: 1rem; }
+.bank-head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 0.75rem; }
+.bank-title { font-size: var(--step-2); }
+.filters { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.filters input[type="search"] { width: 14rem; max-width: 100%; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.chip {
+  font: 500 var(--step--1) / 1 var(--font-body); color: var(--muted); background: transparent;
+  border: 1px solid var(--line); border-radius: 999px; padding: 0.4rem 0.75rem; cursor: pointer;
+}
+.chip:hover { color: var(--ink); }
+.chip[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+
+.grid {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 1rem;
+}
+.card {
+  position: relative; display: flex; flex-direction: column; gap: 0.6rem; min-width: 0;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.1rem 1.2rem;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.card:hover { border-color: var(--accent); transform: translateY(-1px); }
+.card:focus-within { border-color: var(--accent); }
+.card-custom { border-style: dashed; background: transparent; }
+.card-top { display: flex; align-items: center; gap: 0.5rem; }
+.card-num { font: 500 var(--step--1) / 1 var(--font-mono); color: var(--muted); margin-right: auto; }
+.card-title { font-size: var(--step-1); }
+/* The whole card is the click target; the title link keeps it accessible. */
+.card-link { color: var(--ink); text-decoration: none; }
+.card-link::after { content: ""; position: absolute; inset: 0; border-radius: var(--radius); }
+.card-link:focus-visible { outline: none; }
+.card-statement {
+  color: var(--muted); font-size: var(--step--1);
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+.card-bottom { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-top: auto; padding-top: 0.25rem; }
+.card-meta { font: 400 0.75rem / 1 var(--font-mono); color: var(--muted); }
+.card-action { margin-left: auto; font-size: var(--step--1); font-weight: 600; color: var(--accent); }
+
+.tags { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.tag { font: 400 0.75rem / 1 var(--font-mono); color: var(--muted); background: var(--code-bg); border-radius: 4px; padding: 0.3rem 0.45rem; }
+
+.status, .difficulty {
+  font: 500 0.75rem / 1 var(--font-body); border-radius: 999px; padding: 0.3rem 0.55rem; border: 1px solid var(--line); color: var(--muted);
+}
+.difficulty { text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.6875rem; border-color: currentColor; }
+.difficulty-hard { color: var(--over); }
+.difficulty-medium { color: var(--warn); }
+.difficulty-easy { color: var(--ok); }
+.status-draft { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+.status-done { color: var(--ok); border-color: var(--ok); }
+
+.empty { padding: 1rem 1.2rem; border: 1px dashed var(--line); border-radius: var(--radius); color: var(--muted); }
+
+.site-footer { border-top: 1px solid var(--line); }
+.footer-inner {
+  display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.75rem;
+  padding-block: 1.5rem; color: var(--muted); font-size: var(--step--1);
+}

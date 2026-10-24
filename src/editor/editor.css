@@ -1,0 +1,40 @@
+.editor-host { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; min-width: 0; }
+.editor-host:focus-within { border-color: var(--accent-strong); box-shadow: 0 0 0 3px var(--accent-soft); }
+.editor-toolbar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 2px; padding: 4px;
+  background: var(--paper); border-bottom: 1px solid var(--line);
+}
+.editor-group { display: inline-flex; gap: 2px; padding-right: 4px; margin-right: 4px; border-right: 1px solid var(--line); }
+.editor-group:last-of-type { border-right: 0; }
+.editor-btn {
+  font: 500 0.75rem / 1 var(--font-mono); color: var(--muted); background: transparent;
+  border: 1px solid transparent; border-radius: 5px; padding: 0.4rem 0.5rem; cursor: pointer;
+}
+.editor-btn:hover { color: var(--ink); background: var(--btn-hover); border-color: transparent; }
+.editor-btn[aria-pressed="true"] { color: var(--accent); background: var(--accent-soft); }
+.editor-action { margin-left: auto; color: var(--accent); font-family: var(--font-body); }
+
+.editor {
+  min-height: 9rem; padding: 0.85rem 1rem; outline: none; overflow-wrap: anywhere;
+  background-color: var(--surface);
+  background-image: radial-gradient(var(--grid) 1px, transparent 1.2px);
+  background-size: 18px 18px;
+  background-position: 9px 9px;
+}
+.editor p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder); float: left; height: 0; color: var(--muted); pointer-events: none;
+}
+.editor > * + * { margin-top: 0.5rem; }
+.editor p, .editor li p { margin: 0; }
+.editor h3 { font-size: var(--step-0); margin-top: 0.9rem; }
+.editor h3:first-child { margin-top: 0; }
+.editor h4 { font-size: var(--step--1); }
+.editor ul, .editor ol { margin-block: 0; padding-left: 1.4rem; }
+.editor blockquote { margin: 0; padding-left: 0.8rem; border-left: 3px solid var(--line); color: var(--muted); }
+.editor code { background: var(--code-inline); padding: 0.1rem 0.3rem; border-radius: 6px; }
+.editor pre {
+  background: var(--code-bg); padding: 0.7rem 0.85rem; border-radius: 6px; overflow-x: auto;
+  font-size: 0.8125rem; line-height: 1.5;
+}
+.editor pre code { background: none; padding: 0; }
+.editor a { color: var(--accent); }
