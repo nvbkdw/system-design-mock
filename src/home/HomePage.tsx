@@ -5,6 +5,7 @@ import { ALL_QUESTIONS, QUESTION_BANK, isCustom } from "../content/questions";
 import type { Difficulty } from "../content/types";
 import { contributingUrl } from "../lib/repo";
 import { loadRecord, questionStatus, type Status } from "../lib/storage";
+import { HOME_TITLE } from "../content/site";
 import { PhaseStrip } from "../ui/PhaseStrip";
 import { SiteBrand } from "../ui/SiteBrand";
 import { PracticeGuide } from "./PracticeGuide";
@@ -31,7 +32,7 @@ export function HomePage() {
   const contributeHref = contributingUrl();
 
   useEffect(() => {
-    document.title = "System Design Interview Mock";
+    document.title = HOME_TITLE;
     // Progress may change in another tab.
     const refresh = () => setEntries(loadEntries());
     window.addEventListener("storage", refresh);

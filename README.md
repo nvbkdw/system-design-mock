@@ -58,9 +58,30 @@ One-time setup:
 3. Push to `main`. The site is published at `https://<user>.github.io/<repo>/`.
 
 No base-path configuration is needed:
-- Assets use relative URLs (`base: "./"`).
-- Routes use the URL hash (`#/q/<id>`), so GitHub Pages never has to resolve client-side paths.
+- Every route is a real file. The build writes `index.html` for home and `q/<id>/index.html` for each question, so GitHub Pages serves refreshes and shared links directly.
+- Assets use relative URLs (`base: "./"`), and each page's `<base>` tag points at the site root, so they resolve at any page depth.
+- On `main`, CI reads the site URL from `actions/configure-pages` and passes it to the build as `SITE_URL`.
 - `public/.nojekyll` turns off Jekyll processing.
+
+## SEO
+
+Each page is generated with its own metadata, so search engines can index every question:
+
+| Page | Metadata | Structured data (JSON-LD) |
+|---|---|---|
+| Home `/` | Title, description, canonical, Open Graph, Twitter card | `WebSite`, `WebApplication`, `HowTo` (the practice guide), `ItemList` of questions |
+| Question `/q/<id>/` | Title, description from the statement, canonical, Open Graph (`article`) | `LearningResource` with the statement, difficulty, tags and the six timed phases, plus `BreadcrumbList` |
+| Your own question, 404 | `noindex` | none |
+
+- **Crawler-visible content:** each page's HTML also contains the question statement (or the question list on home) for crawlers that don't run JavaScript. React replaces it when the app loads.
+- **Sitemap:** `sitemap.xml` lists home and every bank question.
+- **robots.txt:** written to the site root and points at the sitemap. Crawlers only read `robots.txt` at the domain root (`https://<user>.github.io/robots.txt`), so for a project site, submit `sitemap.xml` in [Google Search Console](https://search.google.com/search-console) instead.
+
+Build locally with the deployed URL to preview the absolute URLs:
+
+```sh
+SITE_URL=https://<user>.github.io/<repo>/ npm run build
+```
 
 ## Adding questions
 
@@ -71,14 +92,19 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). In short: copy `questions/_template.md` 
 ```
 questions/*.md                 Question bank source, one file per question
 plugins/questionBank.ts        Vite plugin: questions/*.md → `virtual:question-bank` (fails the build on errors)
+plugins/seoPages.ts            Vite plugin: per-route pages with metadata, sitemap.xml, robots.txt, 404.html
 scripts/check-questions.ts     CLI validation for contributors and CI
 src/
-  app/App.tsx                  Hash router; practice page is lazy-loaded
+  main.tsx                     Router basename from <base>; redirects old #/q/<id> links
+  app/App.tsx                  Path router (/q/<id>/); practice page is lazy-loaded
   content/
     types.ts                   Question, Phase, RubricItem
     questionFormat.ts          Parser + validator for the question format (pure, tested)
     questions.ts               Bank + the built-in "your own question" entry
     phases.ts                  Phase definitions, budgets, outlines, rubric
+    site.ts, guide.ts          Site name and descriptions; "How to practice" steps
+    seo.ts                     Page metadata, JSON-LD, sitemap, robots.txt (pure, tested)
+    routes.ts                  URL paths for questions
   timer/
     PhaseTimer.ts              Framework-free timer state machine (tested)
     useTimerState.ts           Subscribes a component to timer ticks
@@ -108,6 +134,6 @@ src/
 - **Framework-free core logic.** The timer, the question parser and the export are plain TypeScript with unit tests. React components stay thin.
 - **Timer derived from timestamps.** Elapsed time comes from `Date.now()` differences rather than counting ticks, so throttled background tabs stay accurate. Components subscribe through `useSyncExternalStore`, so only the clock-dependent parts re-render each tick.
 - **Answers outside React state.** Editors are uncontrolled. `RecordStore` holds answers and notifies only the components whose slice changed, so typing doesn't re-render the page.
-- **Hash routing.** GitHub Pages has no rewrite rules, so `#/q/<id>` avoids 404s on refresh without a `404.html` workaround.
+- **Path URLs backed by generated pages.** GitHub Pages has no rewrite rules, so every route is written as a real file at build time (`plugins/seoPages.ts`). That gives each question an indexable URL with its own metadata, without a server or a `404.html` redirect trick. Links from the earlier hash URLs (`#/q/<id>`) redirect to the new paths.
 - **Code splitting.** The editor (ProseMirror) ships only with the practice page, which keeps the home page at about 90 KB gzipped. React Flow is a separate chunk of about 60 KB that loads when the diagram panel opens.
 - **Diagram model separate from React Flow.** The saved diagram is plain data (`src/diagram/types.ts`). The Mermaid export, storage and tests never touch the canvas library, so it could be swapped later. Mermaid uses classic shape syntax (`[( )]`, `{{ }}`) and generated ids (`n1`, `n2`) so GitHub renders it. Box positions are saved in the browser, but they aren't in the Mermaid output because Mermaid lays out the graph itself.

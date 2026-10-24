@@ -21,7 +21,7 @@ git checkout -b add-url-shortener
 cp questions/_template.md questions/url-shortener.md
 ```
 
-The file name is the question's id. It appears in links (`#/q/url-shortener`), so use lowercase kebab-case and don't rename it after it's merged. Files starting with `_` are ignored.
+The file name is the question's id. It appears in the question's URL (`/q/url-shortener/`), so use lowercase kebab-case and don't rename it after it's merged. Files starting with `_` are ignored.
 
 ### 3. Fill it in
 

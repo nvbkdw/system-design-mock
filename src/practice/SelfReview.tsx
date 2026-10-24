@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { PHASES, RUBRIC } from "../content/phases";
 import { ALL_QUESTIONS } from "../content/questions";
+import { questionRoute } from "../content/routes";
 import type { Question } from "../content/types";
 import { formatClock, wholeSeconds } from "../lib/time";
 import type { PhaseTimer } from "../timer/PhaseTimer";
@@ -47,7 +48,7 @@ export function SelfReview({ question, store, timer, onExport }: SelfReviewProps
       </div>
       <nav className="pager" aria-label="Other questions">
         {prev ? (
-          <Link className="pager-link" to={`/q/${prev.id}`}>
+          <Link className="pager-link" to={questionRoute(prev.id)}>
             <span>← Previous</span>
             <strong>{prev.title}</strong>
           </Link>
@@ -55,7 +56,7 @@ export function SelfReview({ question, store, timer, onExport }: SelfReviewProps
           <span />
         )}
         {next && (
-          <Link className="pager-link pager-next" to={`/q/${next.id}`}>
+          <Link className="pager-link pager-next" to={questionRoute(next.id)}>
             <span>Next →</span>
             <strong>{next.title}</strong>
           </Link>

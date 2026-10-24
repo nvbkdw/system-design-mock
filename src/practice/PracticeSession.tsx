@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PHASES, RUBRIC } from "../content/phases";
 import { isCustom } from "../content/questions";
+import { questionPageTitle } from "../content/site";
 import type { Question } from "../content/types";
 import { DiagramLauncher, DiagramPanel } from "../diagram/DiagramPanel";
 import type { RichEditorHandle } from "../editor/RichEditor";
@@ -52,7 +53,7 @@ export function PracticeSession({ question, onCleared }: PracticeSessionProps) {
   }, [prefs.sound]);
 
   useEffect(() => {
-    document.title = `${title} · System Design Interview Mock`;
+    document.title = questionPageTitle(title);
   }, [title]);
 
   const focusPhase = useCallback((index: number) => {

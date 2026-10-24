@@ -12,6 +12,9 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: read # configure-pages reads the site URL
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -21,10 +24,16 @@ jobs:
       - run: npm ci
       - name: Questions, types, lint and tests
         run: npm run check
+      # The deployed site URL, for canonical URLs, sitemap.xml and 404.html.
+      # PR builds skip it; the build then leaves out absolute URLs.
+      - id: pages
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: actions/configure-pages@v6
       - name: Build
         run: npm run build
         env:
           VITE_REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+          SITE_URL: ${{ steps.pages.outputs.base_url }}
       - uses: actions/upload-pages-artifact@v5
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         with:

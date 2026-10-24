@@ -1,12 +1,13 @@
+import { SITE_NAME } from "../content/site";
+
 /**
  * Site title that links home with a full page load (not in-app navigation).
- * "./" resolves to the site root (…/system-design-mock/) and drops the hash,
- * so the browser loads the home page fresh.
+ * Every page's <base> is the site root, so "./" is the home page at any depth.
  */
 export function SiteBrand() {
   return (
     <a className="brand" href="./">
-      System Design Interview Mock
+      {SITE_NAME}
     </a>
   );
 }

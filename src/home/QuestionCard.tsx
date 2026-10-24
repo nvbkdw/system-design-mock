@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { isCustom, questionNumber } from "../content/questions";
+import { questionRoute } from "../content/routes";
 import type { Question } from "../content/types";
 import { STATUS_LABEL, type AnswerRecord, type Status } from "../lib/storage";
 import { relativeTime } from "../lib/time";
@@ -27,7 +28,7 @@ export function QuestionCard({ question, record, status }: QuestionCardProps) {
         <span className={`status status-${status}`}>{STATUS_LABEL[status]}</span>
       </div>
       <h2 className="card-title">
-        <Link to={`/q/${question.id}`} className="card-link">
+        <Link to={questionRoute(question.id)} className="card-link">
           {title}
         </Link>
       </h2>

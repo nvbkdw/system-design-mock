@@ -1,5 +1,5 @@
-import { lazy, Suspense, useLayoutEffect } from "react";
-import { HashRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { lazy, Suspense } from "react";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { HomePage } from "../home/HomePage";
 
 // The practice page carries the editor (TipTap/ProseMirror); load it on demand
@@ -7,26 +7,13 @@ import { HomePage } from "../home/HomePage";
 const PracticePage = lazy(() => import("../practice/PracticePage").then((m) => ({ default: m.PracticePage })));
 
 /**
- * Keeps the home page at the site's bare URL (…/system-design-mock/, not …/#/).
- * An empty hash already maps to "/", so dropping "#/" from the address bar
- * leaves the router's state unchanged; history.state is kept for back/forward.
+ * Path URLs (…/q/<id>/). Every route is a static file generated at build time
+ * (see plugins/seoPages.ts), so GitHub Pages serves refreshes and shared links
+ * directly. `basename` is the site root, e.g. "/system-design-mock".
  */
-function CleanHomeUrl() {
-  // Keyed on every navigation, including a link to the page already open.
-  const { pathname, key } = useLocation();
-  useLayoutEffect(() => {
-    if (pathname === "/" && window.location.hash) {
-      window.history.replaceState(window.history.state, "", window.location.pathname + window.location.search);
-    }
-  }, [pathname, key]);
-  return null;
-}
-
-// Hash routing (#/q/<id>) works on GitHub Pages without server rewrites.
-export function App() {
+export function App({ basename }: { basename: string }) {
   return (
-    <HashRouter>
-      <CleanHomeUrl />
+    <BrowserRouter basename={basename}>
       <Suspense fallback={<p className="wrap loading">Loading…</p>}>
         <Routes>
           <Route path="/" element={<HomePage />} />
@@ -34,6 +21,6 @@ export function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
-    </HashRouter>
+    </BrowserRouter>
   );
 }
