@@ -5,6 +5,7 @@ import type { PhaseTimer } from "../timer/PhaseTimer";
 import { WARNING_MS } from "../timer/PhaseTimer";
 import { useTimerState } from "../timer/useTimerState";
 import { ArmedButton } from "../ui/ArmedButton";
+import { RepoLink } from "../ui/RepoLink";
 import { SiteBrand } from "../ui/SiteBrand";
 import { Switch } from "../ui/Switch";
 
@@ -92,6 +93,7 @@ export function TopBar(props: TopBarProps) {
           <button type="button" className="btn" onClick={onExport}>
             Export
           </button>
+          <RepoLink />
         </div>
       </div>
       {timed && (

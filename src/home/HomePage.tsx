@@ -7,6 +7,7 @@ import { contributingUrl } from "../lib/repo";
 import { loadRecord, questionStatus, type Status } from "../lib/storage";
 import { HOME_TITLE } from "../content/site";
 import { PhaseStrip } from "../ui/PhaseStrip";
+import { RepoLink } from "../ui/RepoLink";
 import { SiteBrand } from "../ui/SiteBrand";
 import { PracticeGuide } from "./PracticeGuide";
 import { QuestionCard } from "./QuestionCard";
@@ -64,11 +65,14 @@ export function HomePage() {
       <header className="site-header">
         <div className="wrap header-inner">
           <SiteBrand />
-          {contributeHref && (
-            <a className="header-link" href={contributeHref}>
-              Add a question
-            </a>
-          )}
+          <nav className="header-nav" aria-label="Project">
+            {contributeHref && (
+              <a className="header-link" href={contributeHref}>
+                Add a question
+              </a>
+            )}
+            <RepoLink />
+          </nav>
         </div>
       </header>
 

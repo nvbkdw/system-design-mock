@@ -1,5 +1,6 @@
 .site-header { border-bottom: 1px solid var(--line); background: var(--surface); }
 .header-inner { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-block: 0.9rem; }
+.header-nav { display: flex; align-items: center; gap: 0.75rem; }
 .header-link { font-size: var(--step--1); font-weight: 500; }
 
 .intro { padding-block: 3rem 2rem; display: grid; gap: 1rem; }

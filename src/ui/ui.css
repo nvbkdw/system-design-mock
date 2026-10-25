@@ -53,3 +53,6 @@
   .strip-name { display: none; }
   .strip-seg { grid-template-columns: 1fr; min-width: 0; }
 }
+
+.repo-link { display: inline-flex; align-items: center; justify-content: center; padding: 0.35rem; border-radius: 6px; color: var(--muted); }
+.repo-link:hover { color: var(--ink); background: var(--btn-hover); }
