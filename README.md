@@ -59,6 +59,11 @@ One-time setup:
 2. Go to **Settings → Pages → Build and deployment → Source** and choose **GitHub Actions**.
 3. Push to `main`. The site is published at `https://<user>.github.io/<repo>/`.
 
+This repo's site is served at **https://system-design-interview.xyz/**, a custom domain set in **Settings → Pages → Custom domain** with **Enforce HTTPS** on:
+- DNS has apex `A` records for `185.199.108.153`–`185.199.111.153` and `AAAA` records for `2606:50c0:8000::153`–`2606:50c0:8003::153`. A `www` `CNAME` to `<user>.github.io` is optional; GitHub redirects it to the apex.
+- No `CNAME` file is needed: Pages deployed by a workflow ignore it and keep the domain in the repo settings.
+- The old `github.io` URL redirects to the custom domain, and `configure-pages` returns the custom domain as `SITE_URL`, so canonical URLs and the sitemap follow it after the next deploy.
+
 No base-path configuration is needed:
 - Every route is a real file. The build writes `index.html` for home and `q/<id>/index.html` for each question, so GitHub Pages serves refreshes and shared links directly.
 - Assets use relative URLs (`base: "./"`), and each page's `<base>` tag points at the site root, so they resolve at any page depth.
@@ -77,7 +82,7 @@ Each page is generated with its own metadata, so search engines can index every 
 
 - **Crawler-visible content:** each page's HTML also contains the question statement (or the question list on home) for crawlers that don't run JavaScript. React replaces it when the app loads.
 - **Sitemap:** `sitemap.xml` lists home and every bank question.
-- **robots.txt:** written to the site root and points at the sitemap. Crawlers only read `robots.txt` at the domain root (`https://<user>.github.io/robots.txt`), so for a project site, submit `sitemap.xml` in [Google Search Console](https://search.google.com/search-console) instead.
+- **robots.txt:** written to the site root and points at the sitemap. Crawlers only read `robots.txt` at the domain root, so it takes effect on a custom domain like this one. A project site at `https://<user>.github.io/<repo>/` has no root of its own; there, submit `sitemap.xml` in [Google Search Console](https://search.google.com/search-console) instead.
 
 Build locally with the deployed URL to preview the absolute URLs:
 
