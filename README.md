@@ -89,25 +89,32 @@ SITE_URL=https://<user>.github.io/<repo>/ npm run build
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). In short: copy `questions/_template.md` to `questions/<id>.md`, fill in the front matter and three sections, then run `npm run check:questions`.
 
+## Adding tutorial chapters
+
+The tutorial at `/tutorials/` is a short book built from `tutorials/<NN>-<id>.md`. `NN` is the chapter number and `<id>` the URL slug, so chapters can be reordered without breaking links. Each file has `title` and `summary` front matter and a Markdown body that starts at `##`; raw HTML is rejected. Numbers must run 1, 2, 3… without gaps. `npm test` validates the book.
+
 ## Architecture
 
 ```
 questions/*.md                 Question bank source, one file per question
 plugins/questionBank.ts        Vite plugin: questions/*.md → `virtual:question-bank`, plus `virtual:question-statements`
                                (statement HTML, practice page only); fails the build on errors
+tutorials/*.md                 Tutorial chapters, one file per chapter
+plugins/tutorialBook.ts        Vite plugin: tutorials/*.md → `virtual:tutorial-book` (rendered HTML, tutorial page only)
 plugins/seoPages.ts            Vite plugin: per-route pages with metadata, sitemap.xml, robots.txt, 404.html
 scripts/check-questions.ts     CLI validation for contributors and CI
 src/
   main.tsx                     Router basename from <base>; redirects old #/q/<id> links
-  app/App.tsx                  Path router (/q/<id>/); practice page is lazy-loaded
+  app/App.tsx                  Path router (/q/<id>/, /tutorials/<id>/); practice and tutorial pages are lazy-loaded
   content/
     types.ts                   Question, Phase, RubricItem
     questionFormat.ts          Parser + validator for the question format (pure, tested)
+    tutorialFormat.ts          Parser + validator for tutorial chapters (pure, tested)
     questions.ts               Bank + the built-in "your own question" entry
     phases.ts                  Phase definitions, budgets, outlines, rubric
     site.ts, guide.ts          Site name and descriptions; "How to practice" steps
     seo.ts                     Page metadata, JSON-LD, sitemap, robots.txt (pure, tested)
-    routes.ts                  URL paths for questions
+    routes.ts                  URL paths for questions and tutorial chapters
   timer/
     PhaseTimer.ts              Framework-free timer state machine (tested)
     useTimerState.ts           Subscribes a component to timer ticks
@@ -126,11 +133,12 @@ src/
     DiagramCanvas.tsx          React Flow canvas: palette, connections, inspector
     BoxNode.tsx, flow.ts       Custom box shapes; model ↔ React Flow conversion
   home/                        Home page and question cards
+  tutorials/TutorialPage.tsx   Tutorial table of contents and chapter reader
   practice/
     PracticeSession.tsx        Owns the timer, record store, prompts and export
     RecordStore.ts             Answer state outside React; slice subscriptions
     TopBar, ProblemHeader, PhaseSection, SelfReview, ExportDialog
-  ui/                          Small shared components (Switch, Toast, ArmedButton, PhaseStrip)
+  ui/                          Small shared components (SiteHeader, Switch, Toast, ArmedButton, PhaseStrip)
 ```
 
 ### Design decisions

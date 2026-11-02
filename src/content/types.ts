@@ -36,3 +36,28 @@ export interface RubricItem {
 }
 
 export const CUSTOM_QUESTION_ID = "custom";
+
+/** A heading inside a tutorial chapter, for the chapter outline and deep links. */
+export interface ChapterSection {
+  id: string;
+  title: string;
+}
+
+/** A tutorial chapter, compiled from tutorials/<NN>-<id>.md. */
+export interface Chapter {
+  id: string;
+  /** 1-based position in the book, from the file name prefix. */
+  number: number;
+  title: string;
+  /** One or two sentences for the table of contents and meta description. */
+  summary: string;
+  /** The chapter body (Markdown after the front matter). */
+  markdown: string;
+}
+
+/** A chapter with its body rendered to HTML at build time. */
+export interface RenderedChapter extends Chapter {
+  html: string;
+  /** The chapter's ## headings, in order. */
+  sections: ChapterSection[];
+}

@@ -25,7 +25,7 @@ const LIMITS = { title: 80, statementMin: 80, statementMax: 6000, bullet: 240, m
 const RAW_HTML = /<\/?[a-z][^>]*>/i;
 
 type Scalar = string | number;
-type FrontMatter = Record<string, Scalar | Scalar[]>;
+export type FrontMatter = Record<string, Scalar | Scalar[]>;
 
 export type ParseResult = { ok: true; question: Question } | { ok: false; errors: string[] };
 
@@ -35,7 +35,8 @@ function parseScalar(raw: string): Scalar {
   return value.replace(/^(["'])(.*)\1$/, "$2");
 }
 
-function parseFrontMatter(lines: string[], errors: string[]): FrontMatter {
+/** Parses front matter lines (between the --- fences), allowing only `fields`. */
+export function parseFrontMatter(lines: string[], errors: string[], fields: ReadonlySet<string> = FIELDS): FrontMatter {
   const data: FrontMatter = {};
   lines.forEach((line, i) => {
     if (!line.trim() || line.trim().startsWith("#")) return;
@@ -45,7 +46,7 @@ function parseFrontMatter(lines: string[], errors: string[]): FrontMatter {
       return;
     }
     const [, key, raw] = match;
-    if (!FIELDS.has(key)) errors.push(`unknown front matter field "${key}" (allowed: ${[...FIELDS].join(", ")})`);
+    if (!fields.has(key)) errors.push(`unknown front matter field "${key}" (allowed: ${[...fields].join(", ")})`);
     if (key in data) errors.push(`duplicate front matter field "${key}"`);
     const list = raw.trim().match(/^\[(.*)\]$/);
     data[key] = list
