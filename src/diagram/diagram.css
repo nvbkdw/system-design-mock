@@ -19,7 +19,14 @@
   font-family: var(--font-body);
 }
 .diagram-flow .react-flow__edge.edge-async .react-flow__edge-path { stroke-dasharray: 6 4; }
-.diagram-flow .react-flow__edge-text { font-size: 12px; }
+/* Arrow labels are HTML (LabeledEdge) so a note can sit under the label. */
+.edge-label {
+  position: absolute; display: grid; justify-items: center; gap: 1px; max-width: 200px; padding: 3px 6px;
+  font-size: 12px; line-height: 1.3; text-align: center; color: var(--ink); background: var(--surface); border-radius: 4px;
+  pointer-events: none;
+}
+.edge-label.is-selected { box-shadow: 0 0 0 1.5px var(--accent); }
+.edge-note { font-size: 11px; font-style: italic; color: var(--muted); }
 .diagram-flow .react-flow__node { font-family: var(--font-body); }
 
 /* ---- boxes ---- */
@@ -30,6 +37,13 @@
   background: var(--surface); border: 1.5px solid var(--ink); border-radius: 8px;
 }
 .box-label { position: relative; white-space: pre-wrap; overflow-wrap: anywhere; }
+.box-note { position: relative; margin-top: 2px; font-size: 11px; font-weight: 400; font-style: italic; color: var(--muted); overflow-wrap: anywhere; }
+/* Text boxes: free text with no outline until hovered or selected. */
+.box-text {
+  place-items: start; min-width: 60px; max-width: 280px; min-height: 0; padding: 6px 8px;
+  font-weight: 400; text-align: left; color: var(--muted); background: transparent; border: 1.5px dashed transparent;
+}
+.box-text:hover { border-color: var(--line); }
 .box-cache { border-radius: 999px; padding-inline: 22px; }
 .box-client { border-radius: 50%; min-height: 60px; padding: 16px 24px; }
 .box-external::before, .box-external::after {
@@ -46,6 +60,7 @@
 .box-outline path[fill="none"] { fill: none; }
 
 .box.is-selected { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.box-text.is-selected { box-shadow: none; }
 .box-database.is-selected, .box-queue.is-selected { border-color: transparent; box-shadow: none; }
 .box.is-selected .box-outline path, .box.is-selected .box-outline polygon { stroke: var(--accent); }
 .box-external.is-selected::before, .box-external.is-selected::after { background: var(--accent); }
@@ -71,6 +86,7 @@
 .icon-cache { border-radius: 999px; }
 .icon-client { border-radius: 50%; width: 13px; height: 13px; }
 .icon-external { box-shadow: inset 3px 0 0 -1.5px currentColor, inset -3px 0 0 -1.5px currentColor; }
+.icon-text { border-style: dashed; }
 
 .diagram-inspector.react-flow__panel {
   display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; max-width: calc(100% - 24px); padding: 0.4rem;
@@ -78,4 +94,6 @@
 }
 .diagram-inspector .input { padding: 0.4rem 0.55rem; }
 .diagram-inspector input.input { width: 13rem; max-width: 100%; }
+.diagram-inspector input.input-note { width: 15rem; font-style: italic; }
+.diagram-inspector .input-text { width: 20rem; max-width: 100%; resize: vertical; font: inherit; }
 .diagram-hint { padding: 0.2rem 0.5rem; font-size: 0.75rem; color: var(--muted); }

@@ -1,3 +1,4 @@
+import { isWritten, normalizeSequences, type SequenceDiagram } from "../diagram/sequence";
 import { emptyDiagram, normalizeDiagram, type Diagram } from "../diagram/types";
 
 // Per-browser persistence. localStorage can be missing or throw (private
@@ -23,6 +24,8 @@ export interface AnswerRecord {
   timing: Timing;
   /** One diagram per question, shared by all phases. */
   diagram: Diagram;
+  /** Sequence diagrams as Mermaid source, in tab order. */
+  sequences: SequenceDiagram[];
   updatedAt?: number;
 }
 
@@ -39,6 +42,7 @@ export const emptyRecord = (): AnswerRecord => ({
   custom: { title: "", statement: "" },
   timing: emptyTiming(),
   diagram: emptyDiagram(),
+  sequences: [],
 });
 
 function read<T>(key: string): Partial<T> | null {
@@ -68,6 +72,7 @@ export function loadRecord(questionId: string): AnswerRecord {
     custom: { ...record.custom, ...saved.custom },
     timing: { ...record.timing, ...saved.timing },
     diagram: normalizeDiagram(saved.diagram),
+    sequences: normalizeSequences(saved.sequences),
     updatedAt: saved.updatedAt,
   };
 }
@@ -86,6 +91,9 @@ export const loadPrefs = (): Prefs => ({ timed: false, sound: true, ...read<Pref
 
 export const savePrefs = (prefs: Prefs) => write("prefs", prefs);
 
+/** Anything drawn or written in the diagram panel. */
+export const hasAnyDiagram = (record: AnswerRecord) => record.diagram.nodes.length > 0 || record.sequences.some(isWritten);
+
 export type Status = "new" | "draft" | "done";
 
 export const STATUS_LABEL: Record<Status, string> = { new: "Not started", draft: "In progress", done: "Completed" };
@@ -96,7 +104,7 @@ export function questionStatus(record: AnswerRecord): Status {
     Object.values(record.answers).some(Boolean) ||
     Object.values(record.rubric).some(Boolean) ||
     Object.values(record.timing.used).some((ms) => ms > 0) ||
-    record.diagram.nodes.length > 0 ||
+    hasAnyDiagram(record) ||
     !!record.custom.title;
   return started ? "draft" : "new";
 }

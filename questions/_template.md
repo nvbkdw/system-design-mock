@@ -12,8 +12,8 @@ difficulty: medium
 
 ## Statement
 
-One or two short paragraphs: the product, who uses it, and what the candidate should design.
-Describe behavior, not solutions. Keep scale numbers out of here; put them below.
+The whole problem, in Markdown: the product, who uses it, and what the candidate should design.
+Start with a prose paragraph; it becomes the summary on the home page. Describe behavior, not solutions.
 
 ## Interviewer answers
 

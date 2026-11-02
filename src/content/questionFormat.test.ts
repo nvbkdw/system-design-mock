@@ -66,6 +66,20 @@ describe("parseQuestion", () => {
     );
   });
 
+  it("keeps the statement as Markdown and derives a plain-text summary", () => {
+    const markdown = "### Context\n\nShorten **long** URLs with `GET /:id`,\nlike [TinyURL](https://tinyurl.com).\n\n- 100M links/day\n- p99 < 50ms";
+    const result = parseQuestion("url-shortener", VALID.replace(/## Statement\n\n[\s\S]*?\n\n## Interviewer/, `## Statement\n\n${markdown}\n\n## Interviewer`));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.question.statement).toBe(markdown);
+    expect(result.question.summary).toBe("Shorten long URLs with GET /:id, like TinyURL.");
+  });
+
+  it("rejects raw HTML in the statement", () => {
+    const result = parseQuestion("url-shortener", VALID.replace("Users can see click counts.", "Users can see <b>click</b> counts."));
+    expect(result.ok || result.errors).toEqual([expect.stringContaining("without raw HTML")]);
+  });
+
   it("rejects files without front matter and unknown fields", () => {
     expect(parseQuestion("x", "## Statement").ok).toBe(false);
     const result = parseQuestion("url-shortener", VALID.replace("order: 5", "level: 5"));

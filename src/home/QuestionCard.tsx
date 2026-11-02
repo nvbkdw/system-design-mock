@@ -18,7 +18,7 @@ export function QuestionCard({ question, record, status }: QuestionCardProps) {
   const title = custom ? record.custom.title || question.title : question.title;
   const statement = custom
     ? record.custom.statement || "Paste a prompt from a real interview or a friend, then practice it with the same phases and timer."
-    : question.statement;
+    : question.summary;
 
   return (
     <li className={"card" + (custom ? " card-custom" : "")}>

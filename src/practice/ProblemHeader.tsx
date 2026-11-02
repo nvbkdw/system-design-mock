@@ -1,3 +1,4 @@
+import statements from "virtual:question-statements";
 import { isCustom, questionNumber } from "../content/questions";
 import type { Question } from "../content/types";
 import { ArmedButton } from "../ui/ArmedButton";
@@ -21,11 +22,8 @@ export function ProblemHeader({ question, store, onClear }: ProblemHeaderProps) 
     <section className="problem">
       <p className="eyebrow">{[questionNumber(question), question.difficulty, ...question.tags].join(" · ")}</p>
       <h1 className="problem-title">{question.title}</h1>
-      <div className="problem-statement">
-        {question.statement.split("\n\n").map((paragraph) => (
-          <p key={paragraph}>{paragraph}</p>
-        ))}
-      </div>
+      {/* Build-time HTML from Markdown; the parser rejects raw HTML in the source. */}
+      <div className="problem-statement" dangerouslySetInnerHTML={{ __html: statements[question.id] ?? "" }} />
       {question.author && <p className="problem-author">Contributed by {question.author}</p>}
       <div className="hints">
         <details className="hint">

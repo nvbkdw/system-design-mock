@@ -49,3 +49,40 @@ body.no-scroll { overflow: hidden; }
 }
 .diagram-launcher-mark::before { left: 0; }
 .diagram-launcher-mark::after { right: 0; border-radius: 50%; }
+
+/* Sequence diagrams: source and live preview, stacked; side by side when wide. */
+.sequence-view { position: absolute; inset: 0; display: flex; flex-direction: column; container-type: inline-size; }
+.sequence-bar { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.8rem; border-bottom: 1px solid var(--line); }
+.sequence-tabs { display: flex; gap: 0.25rem; flex: 1; min-width: 0; overflow-x: auto; }
+.sequence-tab {
+  font: 500 var(--step--1) / 1 var(--font-body); color: var(--muted); white-space: nowrap;
+  background: transparent; border: 1px solid transparent; border-radius: 6px; padding: 0.4rem 0.65rem; cursor: pointer;
+}
+.sequence-tab:hover { color: var(--ink); }
+.sequence-tab[aria-selected="true"] { color: var(--ink); border-color: var(--line); background: var(--code-bg); }
+
+.sequence-work { flex: 1; min-height: 0; display: grid; grid-template-rows: minmax(10rem, 2fr) minmax(0, 3fr); }
+@container (min-width: 760px) {
+  .sequence-work { grid-template-rows: none; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); }
+  .sequence-preview { border-top: 0; border-left: 1px solid var(--line); }
+}
+.sequence-source { display: flex; flex-direction: column; gap: 0.5rem; min-height: 0; padding: 0.6rem 0.8rem; }
+.sequence-meta { display: flex; gap: 0.5rem; }
+.sequence-meta .input { flex: 1; }
+.sequence-code {
+  flex: 1; min-height: 0; resize: none; padding: 0.7rem 0.8rem; tab-size: 4; white-space: pre; overflow-wrap: normal; overflow-x: auto;
+  font: 400 0.8125rem / 1.6 var(--font-mono); color: var(--ink); background: var(--code-bg);
+  border: 1px solid var(--line); border-radius: 6px;
+}
+.sequence-code:focus { border-color: var(--accent-strong); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+.sequence-hint { display: flex; flex-wrap: wrap; gap: 0.3rem; font-size: 0.6875rem; color: var(--muted); }
+.sequence-hint code { font-family: var(--font-mono); padding: 0.1rem 0.35rem; border-radius: 4px; background: var(--code-inline); }
+
+.sequence-preview { position: relative; min-height: 0; overflow: auto; border-top: 1px solid var(--line); }
+.sequence-svg { padding: 1rem; }
+.sequence-svg svg { display: block; max-width: 100%; height: auto; margin: 0 auto; }
+.sequence-svg.is-stale { opacity: 0.35; }
+.sequence-error {
+  position: sticky; top: 0; z-index: 1; margin: 0; padding: 0.5rem 0.8rem; white-space: pre-wrap;
+  font: 400 0.75rem / 1.5 var(--font-mono); color: var(--over); background: var(--surface); border-bottom: 1px solid var(--line);
+}

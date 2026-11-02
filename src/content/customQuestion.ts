@@ -7,6 +7,7 @@ export const CUSTOM_QUESTION: Question = {
   tags: [],
   difficulty: "medium",
   statement: "",
+  summary: "",
   clarify: [],
   probes: [],
 };

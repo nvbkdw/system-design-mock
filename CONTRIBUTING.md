@@ -89,11 +89,11 @@ All three sections are required, with exactly these headings, in any order:
 
 | Section | What goes in it | Shown as |
 |---|---|---|
-| `## Statement` | 1–2 short paragraphs (80–1200 chars): the product, who uses it, what to design. | The problem statement |
+| `## Statement` | The whole problem as the candidate reads it (80–6000 chars): the product, who uses it, what to design, and any scope or deliverables. Markdown (paragraphs, lists, `###` subheadings, bold, code), no raw HTML. | The problem on the practice page and in the export; its first paragraph is the summary on the home page and in search results |
 | `## Interviewer answers` | 3+ bullets: what an interviewer says when asked clarifying questions. | A hidden panel the candidate opens after writing their own questions |
 | `## Where interviewers probe` | 3+ bullets: the hard parts an interviewer would push on. | A hidden panel used for the deep dives |
 
-Bullets start with `-` or `*`, and each one must be at most 240 characters. A bullet can wrap onto indented lines. Text is plain: Markdown formatting inside sections is shown as-is.
+Bullets start with `-` or `*`, and each one must be at most 240 characters. A bullet can wrap onto indented lines. Bullet text is plain: Markdown formatting inside them is shown as-is.
 
 ### Existing tags
 
@@ -106,7 +106,8 @@ grep -h '^tags:' questions/*.md | sort | uniq -c
 ## Writing a good question
 
 - **Describe the product, not the solution.** "Users upload files and ask questions about them" is good. "Build a RAG pipeline with a vector DB" gives the answer away.
-- **Keep numbers out of the statement.** Scale, latency targets and consistency needs go in **Interviewer answers**, so candidates practice asking for them.
+- **Start the statement with a prose paragraph.** It becomes the summary on the home page card and in search results.
+- **Decide where the numbers go.** A statement that includes scale and latency targets reads like a take-home brief; leaving them for **Interviewer answers** makes candidates practice asking for them.
 - **Make interviewer answers concrete and decisive.** Use numbers ("~50K requests/s peak", "p99 < 200ms"), state correctness needs ("no event may be lost or counted twice"), and say what's out of scope.
 - **Make probes specific.** "Hot partitions when one tenant is 30% of traffic" is more useful than "scalability".
 - **Size it for 50 minutes.** If the question needs three separate systems, narrow it.

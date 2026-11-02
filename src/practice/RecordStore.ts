@@ -1,6 +1,7 @@
 // Holds one question's answers outside React state, so typing in an editor
 // does not re-render the page. Components subscribe to the slices they show.
 import { useSyncExternalStore } from "react";
+import type { SequenceDiagram } from "../diagram/sequence";
 import type { Diagram } from "../diagram/types";
 import { clearRecord, loadRecord, saveRecord, type AnswerRecord, type Timing } from "../lib/storage";
 
@@ -39,6 +40,10 @@ export class RecordStore {
 
   setDiagram(diagram: Diagram): void {
     this.update((r) => ({ ...r, diagram }));
+  }
+
+  setSequences(sequences: SequenceDiagram[]): void {
+    this.update((r) => ({ ...r, sequences }));
   }
 
   /** Current record with live timing, e.g. for export. */

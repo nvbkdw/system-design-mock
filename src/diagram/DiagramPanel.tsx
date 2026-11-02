@@ -2,13 +2,16 @@
 // separate chunk that loads when the panel first opens.
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { useRecordSlice, type RecordStore } from "../practice/RecordStore";
-import { toMermaid } from "./mermaid";
+import { fencedBlocks, mermaidBlocks } from "./mermaid";
+import { isWritten } from "./sequence";
+import { SequenceView } from "./SequenceView";
 import type { Diagram } from "./types";
 import "./panel.css";
 
 const DiagramCanvas = lazy(() => import("./DiagramCanvas"));
 
-type View = "canvas" | "mermaid";
+const VIEWS = { canvas: "Canvas", sequence: "Sequence", mermaid: "Mermaid" } as const;
+type View = keyof typeof VIEWS;
 
 interface DiagramPanelProps {
   store: RecordStore;
@@ -18,8 +21,13 @@ interface DiagramPanelProps {
 }
 
 export function DiagramPanel({ store, docked, onClose }: DiagramPanelProps) {
-  const [view, setView] = useState<View>("canvas");
+  // Open on the sequences when they are all this question has.
+  const [view, setView] = useState<View>(() => {
+    const { diagram, sequences } = store.get();
+    return !diagram.nodes.length && sequences.some(isWritten) ? "sequence" : "canvas";
+  });
   const [expanded, setExpanded] = useState(false);
+  const [sequenceId, setSequenceId] = useState<string | null>(null);
   const [initial] = useState(() => store.get().diagram);
   const onChange = useCallback((diagram: Diagram) => store.setDiagram(diagram), [store]);
 
@@ -45,9 +53,9 @@ export function DiagramPanel({ store, docked, onClose }: DiagramPanelProps) {
           <p className="diagram-sub">Shared by all phases · exported as Mermaid</p>
         </div>
         <div className="diagram-tabs" role="tablist" aria-label="Diagram view">
-          {(["canvas", "mermaid"] as const).map((v) => (
+          {(Object.keys(VIEWS) as View[]).map((v) => (
             <button key={v} type="button" role="tab" aria-selected={view === v} className="diagram-tab" onClick={() => setView(v)}>
-              {v === "canvas" ? "Canvas" : "Mermaid"}
+              {VIEWS[v]}
             </button>
           ))}
         </div>
@@ -67,6 +75,7 @@ export function DiagramPanel({ store, docked, onClose }: DiagramPanelProps) {
             <DiagramCanvas initial={initial} onChange={onChange} />
           </Suspense>
         </div>
+        {view === "sequence" && <SequenceView store={store} selectedId={sequenceId} onSelect={setSequenceId} />}
         {view === "mermaid" && <MermaidView store={store} />}
       </div>
     </section>
@@ -75,14 +84,15 @@ export function DiagramPanel({ store, docked, onClose }: DiagramPanelProps) {
 
 function MermaidView({ store }: { store: RecordStore }) {
   const diagram = useRecordSlice(store, (r) => r.diagram);
+  const sequences = useRecordSlice(store, (r) => r.sequences);
   const [status, setStatus] = useState("");
-  const code = toMermaid(diagram);
+  const markdown = fencedBlocks(mermaidBlocks(diagram, sequences));
 
-  if (!diagram.nodes.length) return <p className="diagram-empty">Nothing drawn yet. Add boxes on the Canvas tab.</p>;
+  if (!markdown) return <p className="diagram-empty">Nothing drawn yet. Add boxes on the Canvas tab or write a sequence diagram.</p>;
 
   async function copy() {
     try {
-      await navigator.clipboard.writeText("```mermaid\n" + code + "\n```");
+      await navigator.clipboard.writeText(markdown);
       setStatus("Copied");
     } catch {
       setStatus("Copy failed; select the text instead");
@@ -91,7 +101,7 @@ function MermaidView({ store }: { store: RecordStore }) {
 
   return (
     <div className="mermaid-view">
-      <pre className="mermaid-code">{code}</pre>
+      <pre className="mermaid-code">{markdown}</pre>
       <div className="mermaid-foot">
         <span className="dialog-status" role="status">
           {status || "Included in the Markdown export."}
@@ -111,7 +121,7 @@ export function DiagramLauncher({ hasDiagram, onOpen }: { hasDiagram: boolean; o
       <span className="diagram-launcher-mark" aria-hidden="true" />
       <div className="diagram-launcher-text">
         <strong>Diagram</strong>
-        <span>{hasDiagram ? "Your diagram is saved. Open it to keep drawing." : "Sketch boxes and arrows next to your answers."}</span>
+        <span>{hasDiagram ? "Your diagram is saved. Open it to keep drawing." : "Sketch boxes and arrows, or sequence diagrams, next to your answers."}</span>
       </div>
       <button type="button" className="btn" onClick={onOpen}>
         {hasDiagram ? "Show diagram" : "Open diagram"}

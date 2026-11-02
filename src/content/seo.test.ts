@@ -2,8 +2,20 @@ import { describe, expect, it } from "vitest";
 import { CUSTOM_QUESTION } from "./customQuestion";
 import { GUIDE_STEPS } from "./guide";
 import { PHASES } from "./phases";
-import { applyPageMeta, homeMeta, jsonForScript, questionDescription, questionMeta, renderHead, robotsTxt, sitemap, truncate } from "./seo";
-import type { Question } from "./types";
+import {
+  applyPageMeta,
+  chapterMeta,
+  homeMeta,
+  jsonForScript,
+  questionDescription,
+  questionMeta,
+  renderHead,
+  robotsTxt,
+  sitemap,
+  truncate,
+  tutorialsMeta,
+} from "./seo";
+import type { Question, RenderedChapter } from "./types";
 
 const SITE = "https://example.github.io/repo/";
 const question: Question = {
@@ -12,8 +24,18 @@ const question: Question = {
   tags: ["storage", "caching"],
   difficulty: "easy",
   statement: "Design a URL shortening service like TinyURL. Users submit a long URL and get back a short alias.\n\nIt must stay fast.",
+  summary: "Design a URL shortening service like TinyURL. Users submit a long URL and get back a short alias.",
   clarify: ["a", "b", "c"],
   probes: ["x", "y", "z"],
+};
+const chapter: RenderedChapter = {
+  id: "interview-format",
+  number: 1,
+  title: "The system design interview",
+  summary: "How the interview runs & what is scored.",
+  markdown: "## Clock",
+  html: '<h2 id="clock">Clock</h2>',
+  sections: [{ id: "clock", title: "Clock" }],
 };
 const TEMPLATE =
   '<!doctype html><html><head>\n<meta charset="utf-8" />\n<title>Old</title>\n<meta name="description" content="old" />\n' +
@@ -83,6 +105,26 @@ describe("homeMeta", () => {
   });
 });
 
+describe("tutorialsMeta / chapterMeta", () => {
+  it("lists the chapters as parts of a course", () => {
+    const meta = tutorialsMeta([chapter], SITE);
+    expect(meta.path).toBe("tutorials/");
+    const [course] = graph(meta);
+    expect(course.hasPart).toEqual([expect.objectContaining({ name: chapter.title, position: 1, url: SITE + "tutorials/interview-format/" })]);
+    expect(meta.body).toContain('<a href="tutorials/interview-format/">The system design interview</a>: How the interview runs &amp; what is scored.');
+  });
+
+  it("puts the chapter's full text in the crawler body, with breadcrumbs back to the tutorial", () => {
+    const meta = chapterMeta(chapter, SITE);
+    expect(meta.path).toBe("tutorials/interview-format/");
+    expect(meta.ogType).toBe("article");
+    expect(meta.body).toContain(chapter.html);
+    const [article, breadcrumbs] = graph(meta);
+    expect(article.isPartOf).toEqual(expect.objectContaining({ "@id": SITE + "tutorials/#course" }));
+    expect((breadcrumbs.itemListElement as { item: string }[]).map((i) => i.item)).toEqual([SITE, SITE + "tutorials/", SITE + "tutorials/interview-format/"]);
+  });
+});
+
 describe("renderHead / applyPageMeta", () => {
   it("replaces the template title and description, keeping charset first and <base> before relative URLs", () => {
     const html = applyPageMeta(TEMPLATE, questionMeta(question, SITE), "../../", SITE);
@@ -116,5 +158,12 @@ describe("sitemap and robots", () => {
     expect(xml).not.toContain("q/custom/");
     expect(robotsTxt(SITE)).toContain("Sitemap: https://example.github.io/repo/sitemap.xml");
     expect(robotsTxt()).not.toContain("Sitemap");
+  });
+
+  it("lists the tutorial and its chapters when there are any", () => {
+    expect(sitemap([question], SITE, "2026-10-24")).not.toContain("tutorials/");
+    const xml = sitemap([question], SITE, "2026-10-24", [chapter]);
+    expect(xml).toContain("<loc>https://example.github.io/repo/tutorials/</loc>");
+    expect(xml).toContain("<loc>https://example.github.io/repo/tutorials/interview-format/</loc>");
   });
 });

@@ -3,16 +3,25 @@
 // build plugin and unit tests.
 import { GUIDE_STEPS, plainText } from "./guide";
 import { PHASES, TOTAL_MINUTES } from "./phases";
-import { questionPath } from "./routes";
-import { HOME_TITLE, SITE_DESCRIPTION, SITE_NAME, questionPageTitle } from "./site";
-import { CUSTOM_QUESTION_ID, type Question } from "./types";
+import { TUTORIALS_PATH, chapterPath, questionPath } from "./routes";
+import {
+  HOME_TITLE,
+  SITE_DESCRIPTION,
+  SITE_NAME,
+  TUTORIALS_DESCRIPTION,
+  TUTORIALS_NAME,
+  TUTORIALS_TITLE,
+  chapterPageTitle,
+  questionPageTitle,
+} from "./site";
+import { CUSTOM_QUESTION_ID, type Chapter, type Question, type RenderedChapter } from "./types";
 
 type JsonLd = Record<string, unknown>;
 
 export interface PageMeta {
   title: string;
   description: string;
-  /** Path relative to the site root: "" for home, "q/<id>/" for a question. */
+  /** Path relative to the site root: "" for home, "q/<id>/" for a question, "tutorials/…" for the tutorial. */
   path: string;
   ogType: "website" | "article";
   noindex?: boolean;
@@ -111,10 +120,11 @@ export function homeMeta(questions: readonly Question[], siteUrl?: string): Page
 // ---- questions -------------------------------------------------------------
 
 export function questionDescription(q: Question): string {
-  return truncate(`System design interview question (${q.difficulty}): ${q.statement}`);
+  return truncate(`System design interview question (${q.difficulty}): ${q.summary}`);
 }
 
-export function questionMeta(q: Question, siteUrl?: string): PageMeta {
+/** `statementHtml` is the rendered statement; without it the Markdown is shown as escaped paragraphs. */
+export function questionMeta(q: Question, siteUrl?: string, statementHtml = paragraphs(q.statement)): PageMeta {
   if (q.id === CUSTOM_QUESTION_ID) {
     return {
       title: questionPageTitle(q.title),
@@ -164,7 +174,7 @@ export function questionMeta(q: Question, siteUrl?: string): PageMeta {
 
   const body =
     `<main class="wrap prerender"><p class="eyebrow">System design interview question · ${escapeHtml(q.difficulty)} · ` +
-    `${q.tags.map(escapeHtml).join(" · ")}</p><h1>${escapeHtml(q.title)}</h1>${paragraphs(q.statement)}` +
+    `${q.tags.map(escapeHtml).join(" · ")}</p><h1>${escapeHtml(q.title)}</h1>${statementHtml}` +
     `<h2>Practice it as a ${TOTAL_MINUTES}-minute mock interview</h2><ol>` +
     PHASES.map((p) => `<li>${escapeHtml(p.title)} (${p.minutes} min): ${escapeHtml(p.goal)}</li>`).join("") +
     `</ol><p><a href="./">More system design interview questions</a></p></main>`;
@@ -176,6 +186,75 @@ export function questionMeta(q: Question, siteUrl?: string): PageMeta {
     ogType: "article",
     jsonLd: { "@context": "https://schema.org", "@graph": [resource, breadcrumbs] },
     body,
+  };
+}
+
+// ---- tutorials -------------------------------------------------------------
+
+const tutorialsBreadcrumbs = (siteUrl: string | undefined, chapter?: Chapter) => ({
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: SITE_NAME, item: absolute("", siteUrl) },
+    { "@type": "ListItem", position: 2, name: TUTORIALS_NAME, item: absolute(TUTORIALS_PATH, siteUrl) },
+    ...(chapter ? [{ "@type": "ListItem", position: 3, name: chapter.title, item: absolute(chapterPath(chapter.id), siteUrl) }] : []),
+  ],
+});
+
+const chapterList = (chapters: readonly Chapter[]) =>
+  "<ol>" +
+  chapters.map((c) => `<li><a href="${chapterPath(c.id)}">${escapeHtml(c.title)}</a>: ${escapeHtml(c.summary)}</li>`).join("") +
+  "</ol>";
+
+/** The tutorial's table of contents. */
+export function tutorialsMeta(chapters: readonly Chapter[], siteUrl?: string): PageMeta {
+  const url = absolute(TUTORIALS_PATH, siteUrl);
+  const course = {
+    "@type": "Course",
+    "@id": `${url ?? ""}#course`,
+    name: TUTORIALS_NAME,
+    description: TUTORIALS_DESCRIPTION,
+    url,
+    inLanguage: "en",
+    isAccessibleForFree: true,
+    provider: { "@type": "Organization", name: SITE_NAME, url: absolute("", siteUrl) },
+    hasPart: chapters.map((c) => ({ "@type": "LearningResource", position: c.number, name: c.title, description: c.summary, url: absolute(chapterPath(c.id), siteUrl) })),
+  };
+  return {
+    title: TUTORIALS_TITLE,
+    description: TUTORIALS_DESCRIPTION,
+    path: TUTORIALS_PATH,
+    ogType: "website",
+    jsonLd: { "@context": "https://schema.org", "@graph": [course, tutorialsBreadcrumbs(siteUrl)] },
+    body: `<main class="wrap prerender"><h1>${escapeHtml(TUTORIALS_NAME)}</h1><p>${escapeHtml(TUTORIALS_DESCRIPTION)}</p>${chapterList(chapters)}</main>`,
+  };
+}
+
+/** A tutorial chapter, with its full text for crawlers. */
+export function chapterMeta(chapter: RenderedChapter, siteUrl?: string): PageMeta {
+  const url = absolute(chapterPath(chapter.id), siteUrl);
+  const article = {
+    "@type": "LearningResource",
+    "@id": `${url ?? ""}#chapter`,
+    name: chapter.title,
+    headline: chapter.title,
+    description: chapter.summary,
+    url,
+    inLanguage: "en",
+    learningResourceType: "Tutorial",
+    teaches: "System design interviews",
+    position: chapter.number,
+    isAccessibleForFree: true,
+    isPartOf: { "@type": "Course", "@id": `${absolute(TUTORIALS_PATH, siteUrl) ?? ""}#course`, name: TUTORIALS_NAME },
+  };
+  return {
+    title: chapterPageTitle(chapter.title),
+    description: truncate(chapter.summary),
+    path: chapterPath(chapter.id),
+    ogType: "article",
+    jsonLd: { "@context": "https://schema.org", "@graph": [article, tutorialsBreadcrumbs(siteUrl, chapter)] },
+    body:
+      `<main class="wrap prerender"><p class="eyebrow">${escapeHtml(TUTORIALS_NAME)} · Chapter ${chapter.number}</p>` +
+      `<h1>${escapeHtml(chapter.title)}</h1>${chapter.html}<p><a href="${TUTORIALS_PATH}">All chapters</a></p></main>`,
   };
 }
 
@@ -229,8 +308,12 @@ export function applyPageMeta(html: string, meta: PageMeta, base: string, siteUr
 
 // ---- sitemap & robots -------------------------------------------------------
 
-export function sitemap(questions: readonly Question[], siteUrl: string, lastmod: string): string {
-  const urls = ["", ...questions.filter((q) => q.id !== CUSTOM_QUESTION_ID).map((q) => questionPath(q.id))];
+export function sitemap(questions: readonly Question[], siteUrl: string, lastmod: string, chapters: readonly Chapter[] = []): string {
+  const urls = [
+    "",
+    ...questions.filter((q) => q.id !== CUSTOM_QUESTION_ID).map((q) => questionPath(q.id)),
+    ...(chapters.length ? [TUTORIALS_PATH, ...chapters.map((c) => chapterPath(c.id))] : []),
+  ];
   return (
     `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
     urls.map((path) => `  <url><loc>${escapeHtml(new URL(path, siteUrl).href)}</loc><lastmod>${lastmod}</lastmod></url>`).join("\n") +

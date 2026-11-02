@@ -26,7 +26,7 @@ export function SelfReview({ question, store, timer, onExport }: SelfReviewProps
       <h2 id="review-title" className="review-title">
         Self-review
       </h2>
-      <p className="review-intro">Tick what you actually did. The checklist is included in the export.</p>
+      <p className="review-intro">Tick what you actually did. The checklist stays on this page; it isn't exported.</p>
       <ul className="rubric">
         {RUBRIC.map((item) => (
           <li key={item.id}>

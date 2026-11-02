@@ -1,12 +1,17 @@
-// Vite plugin exposing questions/*.md as `virtual:question-bank`.
+// Vite plugin exposing questions/*.md as two virtual modules:
+//   `virtual:question-bank`        the questions, imported by every page
+//   `virtual:question-statements`  id → statement HTML, imported only by the
+//                                  lazy practice page so home doesn't carry it
 // Invalid questions fail the build (and show the error overlay in dev).
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { marked } from "marked";
 import type { Plugin } from "vite";
 import { parseQuestionBank, type BankResult } from "../src/content/questionFormat";
 
-const MODULE_ID = "virtual:question-bank";
-const RESOLVED_ID = "\0" + MODULE_ID;
+const BANK_ID = "virtual:question-bank";
+const STATEMENTS_ID = "virtual:question-statements";
+const RESOLVED = new Map([BANK_ID, STATEMENTS_ID].map((id) => ["\0" + id, id]));
 
 export const QUESTIONS_DIR = path.resolve(import.meta.dirname, "..", "questions");
 
@@ -18,6 +23,9 @@ export function loadQuestionBank(dir = QUESTIONS_DIR): BankResult {
   return parseQuestionBank(files);
 }
 
+/** Statement Markdown → HTML. The parser has already rejected raw HTML. */
+export const renderStatement = (markdown: string) => marked.parse(markdown, { async: false });
+
 export function questionBank(): Plugin {
   let serving = false;
   return {
@@ -25,9 +33,10 @@ export function questionBank(): Plugin {
     configResolved(config) {
       serving = config.command === "serve";
     },
-    resolveId: (id) => (id === MODULE_ID ? RESOLVED_ID : undefined),
+    resolveId: (id) => (id === BANK_ID || id === STATEMENTS_ID ? "\0" + id : undefined),
     load(id) {
-      if (id !== RESOLVED_ID) return;
+      const module = RESOLVED.get(id);
+      if (!module) return;
       // The dev server watches the folder in configureServer. There, watch files
       // become import-analysis dependencies, and a directory can't be resolved.
       // So register them only for `vite build --watch`, and only as files.
@@ -38,15 +47,19 @@ export function questionBank(): Plugin {
       }
       const { questions, errors } = loadQuestionBank();
       if (errors.length) this.error("Invalid question bank:\n" + errors.map((e) => "  - " + e).join("\n"));
-      return "export default " + JSON.stringify(questions) + ";";
+      if (module === BANK_ID) return "export default " + JSON.stringify(questions) + ";";
+      const html = Object.fromEntries(questions.map((q) => [q.id, renderStatement(q.statement)]));
+      return "export default " + JSON.stringify(html) + ";";
     },
     configureServer(server) {
       // New or deleted question files should refresh the bank in dev.
       server.watcher.add(QUESTIONS_DIR);
       const refresh = (file: string) => {
         if (!file.startsWith(QUESTIONS_DIR)) return;
-        const mod = server.moduleGraph.getModuleById(RESOLVED_ID);
-        if (mod) server.moduleGraph.invalidateModule(mod);
+        for (const resolved of RESOLVED.keys()) {
+          const mod = server.moduleGraph.getModuleById(resolved);
+          if (mod) server.moduleGraph.invalidateModule(mod);
+        }
         server.ws.send({ type: "full-reload" });
       };
       server.watcher.on("add", refresh);

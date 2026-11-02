@@ -1,8 +1,8 @@
 // Builds the Markdown export: question, timing, one section per phase, self-review.
 import TurndownService from "turndown";
 import { gfm } from "turndown-plugin-gfm";
-import type { Phase, Question, RubricItem } from "../content/types";
-import { toMermaid } from "../diagram/mermaid";
+import type { Phase, Question } from "../content/types";
+import { fencedBlocks, mermaidBlocks } from "../diagram/mermaid";
 import { FEEDBACK_PROMPT } from "../content/feedbackPrompt";
 import type { AnswerRecord, Timing } from "./storage";
 import { formatClock, localDate, wholeSeconds } from "./time";
@@ -39,28 +39,22 @@ export function htmlToMarkdown(html: string | undefined): string {
 
 export interface ExportInput {
   question: Question;
-  title: string;
   statement: string;
   record: AnswerRecord;
   timing: Timing;
   phases: readonly Phase[];
-  rubric: readonly RubricItem[];
-  now?: Date;
 }
 
-export function toMarkdown({ title, statement, record, timing, phases, rubric, now = new Date() }: ExportInput): string {
+export function toMarkdown({ statement, record, timing, phases }: ExportInput): string {
   const timed = Object.values(timing.used).some((ms) => ms > 0);
   const budgetOf = (p: Phase) => p.minutes * 60000 + (timing.extra[p.id] ?? 0);
-  const totalUsed = phases.reduce((sum, p) => sum + (timing.used[p.id] ?? 0), 0);
-  const totalBudget = phases.reduce((sum, p) => sum + p.minutes * 60000, 0);
   const lines: string[] = [];
 
-  lines.push(`# ${title}`, "");
-  lines.push(
-    `*Exported ${localDate(now)} · ${timed ? `Timed: ${formatClock(totalUsed)} of ${formatClock(totalBudget)}` : "Untimed practice"}*`,
-    "",
-  );
-  lines.push("## Problem", "", statement || "*(no problem statement)*", "");
+  // Ready to paste into an AI assistant as-is.
+  lines.push(FEEDBACK_PROMPT, "");
+
+  lines.push("# System Design Problem Statement", "", statement || "*(no problem statement)*", "");
+  lines.push(`# My Design Solution (break down into ${phases.length} progressive phases):`, "");
 
   if (timed) {
     lines.push("## Timing", "", "| Phase | Budget | Used | Over / under |", "|---|---|---|---|");
@@ -73,9 +67,8 @@ export function toMarkdown({ title, statement, record, timing, phases, rubric, n
     lines.push("");
   }
 
-  if (record.diagram.nodes.length) {
-    lines.push("## Diagram", "", "```mermaid", toMermaid(record.diagram), "```", "");
-  }
+  const diagrams = fencedBlocks(mermaidBlocks(record.diagram, record.sequences));
+  if (diagrams) lines.push("## Diagrams", "", diagrams, "");
 
   phases.forEach((phase, i) => {
     lines.push(`## ${i + 1}. ${phase.title}`, "");
@@ -83,12 +76,6 @@ export function toMarkdown({ title, statement, record, timing, phases, rubric, n
     lines.push(htmlToMarkdown(record.answers[phase.id]) || "*(no answer)*", "");
   });
 
-  lines.push("## Self-review", "");
-  for (const item of rubric) lines.push(`- [${record.rubric[item.id] ? "x" : " "}] ${item.text}`);
-  lines.push("");
-
-  // Ready to paste into an AI assistant as-is.
-  lines.push("## Feedback request", "", FEEDBACK_PROMPT, "");
   return lines.join("\n");
 }
 

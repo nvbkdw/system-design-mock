@@ -22,15 +22,15 @@ export const GUIDE_STEPS: readonly GuideStep[] = [
     text:
       "Write your answer in each phase's editor, using its checklist and *Insert outline* to get started. Write your own " +
       "clarifying questions before opening *Interviewer answers*, the way you'd ask them in the room. Sketch the architecture " +
-      "in the *Diagram* panel. It stays next to your answers in every phase.",
+      "in the *Diagram* panel and walk key requests through it as sequence diagrams. It stays next to your answers in every phase.",
     uses: ["Phase checklists", "Rich-text editor", "Interviewer answers", "Diagram"],
   },
   {
     title: "Export and get feedback",
     text:
-      "Tick the self-review, then export everything as Markdown: the question, your answers, the diagram as Mermaid and your " +
-      "timing. The export ends with a feedback prompt, so you can paste the whole file into an AI assistant and get critical " +
-      "feedback, not encouragement. Or send it to a friend.",
+      "Tick the self-review to check yourself, then export everything as Markdown: the question, your answers, the diagrams as " +
+      "Mermaid and your timing. The export starts with a feedback prompt, so you can paste the whole file into an AI assistant " +
+      "and get critical feedback, not encouragement. Or send it to a friend.",
     uses: ["Self-review", "Markdown export"],
   },
   {

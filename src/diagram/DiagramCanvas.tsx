@@ -17,10 +17,12 @@ import "@xyflow/react/dist/style.css";
 import { useCallback, useEffect, useRef } from "react";
 import { BoxNode } from "./BoxNode";
 import { fromFlow, newId, toDiagramEdge, toFlowEdge, toFlowNode, type BoxData, type BoxNode as BoxNodeType, type FlowEdge } from "./flow";
-import { EDGE_STYLES, SHAPE_ORDER, SHAPES, type Diagram, type DiagramEdge, type EdgeStyle, type NodeShape } from "./types";
+import { LabeledEdge } from "./LabeledEdge";
+import { EDGE_STYLES, hasNote, SHAPE_ORDER, SHAPES, type Diagram, type DiagramEdge, type EdgeStyle, type NodeShape } from "./types";
 import "./diagram.css";
 
 const nodeTypes = { box: BoxNode };
+const edgeTypes = { labeled: LabeledEdge };
 
 interface DiagramCanvasProps {
   initial: Diagram;
@@ -40,7 +42,7 @@ function Canvas({ initial, onChange }: DiagramCanvasProps) {
   const [edges, setEdges, onEdgesChange] = useEdgesState<FlowEdge>(initial.edges.map(toFlowEdge));
   const { screenToFlowPosition, deleteElements } = useReactFlow<BoxNodeType, FlowEdge>();
   const wrapper = useRef<HTMLDivElement>(null);
-  const labelInput = useRef<HTMLInputElement>(null);
+  const labelInput = useRef<HTMLInputElement & HTMLTextAreaElement>(null);
   const addedCount = useRef(0);
   const lastSaved = useRef(JSON.stringify(initial));
 
@@ -96,7 +98,15 @@ function Canvas({ initial, onChange }: DiagramCanvasProps) {
   );
 
   function updateNode(id: string, patch: Partial<BoxData>) {
-    setNodes((ns) => ns.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...patch } } : n)));
+    setNodes((ns) =>
+      ns.map((n) => {
+        if (n.id !== id) return n;
+        const data = { ...n.data, ...patch };
+        // Text boxes have no note; drop one left over from a shape change.
+        if (!data.note || !hasNote(data.shape)) delete data.note;
+        return { ...n, data };
+      }),
+    );
   }
 
   function updateEdge(id: string, patch: Partial<DiagramEdge>) {
@@ -112,6 +122,7 @@ function Canvas({ initial, onChange }: DiagramCanvasProps) {
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
@@ -141,13 +152,33 @@ function Canvas({ initial, onChange }: DiagramCanvasProps) {
         <Panel position="bottom-center" className="diagram-inspector">
           {selectedNode ? (
             <>
-              <input
-                ref={labelInput}
-                className="input"
-                aria-label="Box label"
-                value={selectedNode.data.label}
-                onChange={(e) => updateNode(selectedNode.id, { label: e.target.value })}
-              />
+              {hasNote(selectedNode.data.shape) ? (
+                <>
+                  <input
+                    ref={labelInput}
+                    className="input"
+                    aria-label="Box label"
+                    value={selectedNode.data.label}
+                    onChange={(e) => updateNode(selectedNode.id, { label: e.target.value })}
+                  />
+                  <input
+                    className="input input-note"
+                    aria-label="Box note"
+                    placeholder="Note, e.g. sharded by user_id"
+                    value={selectedNode.data.note ?? ""}
+                    onChange={(e) => updateNode(selectedNode.id, { note: e.target.value })}
+                  />
+                </>
+              ) : (
+                <textarea
+                  ref={labelInput}
+                  className="input input-text"
+                  aria-label="Text"
+                  rows={2}
+                  value={selectedNode.data.label}
+                  onChange={(e) => updateNode(selectedNode.id, { label: e.target.value })}
+                />
+              )}
               <select
                 className="input"
                 aria-label="Box shape"
@@ -171,8 +202,15 @@ function Canvas({ initial, onChange }: DiagramCanvasProps) {
                 className="input"
                 aria-label="Arrow label"
                 placeholder="Label, e.g. writes"
-                value={typeof selectedEdge.label === "string" ? selectedEdge.label : ""}
+                value={selectedEdge.data?.label ?? ""}
                 onChange={(e) => updateEdge(selectedEdge.id, { label: e.target.value })}
+              />
+              <input
+                className="input input-note"
+                aria-label="Arrow note"
+                placeholder="Note, e.g. p99 < 50ms"
+                value={selectedEdge.data?.note ?? ""}
+                onChange={(e) => updateEdge(selectedEdge.id, { note: e.target.value })}
               />
               <select
                 className="input"
@@ -208,7 +246,7 @@ function Canvas({ initial, onChange }: DiagramCanvasProps) {
             <p className="diagram-hint">
               {nodes.length === 0
                 ? "Add a box from the toolbar to start."
-                : "Drag from a dot to connect · double-click to rename · Delete removes the selection"}
+                : "Drag from a dot to connect · double-click to edit the label and note · Delete removes the selection"}
             </p>
           )}
         </Panel>
