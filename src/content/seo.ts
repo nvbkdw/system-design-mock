@@ -111,10 +111,11 @@ export function homeMeta(questions: readonly Question[], siteUrl?: string): Page
 // ---- questions -------------------------------------------------------------
 
 export function questionDescription(q: Question): string {
-  return truncate(`System design interview question (${q.difficulty}): ${q.statement}`);
+  return truncate(`System design interview question (${q.difficulty}): ${q.summary}`);
 }
 
-export function questionMeta(q: Question, siteUrl?: string): PageMeta {
+/** `statementHtml` is the rendered statement; without it the Markdown is shown as escaped paragraphs. */
+export function questionMeta(q: Question, siteUrl?: string, statementHtml = paragraphs(q.statement)): PageMeta {
   if (q.id === CUSTOM_QUESTION_ID) {
     return {
       title: questionPageTitle(q.title),
@@ -164,7 +165,7 @@ export function questionMeta(q: Question, siteUrl?: string): PageMeta {
 
   const body =
     `<main class="wrap prerender"><p class="eyebrow">System design interview question · ${escapeHtml(q.difficulty)} · ` +
-    `${q.tags.map(escapeHtml).join(" · ")}</p><h1>${escapeHtml(q.title)}</h1>${paragraphs(q.statement)}` +
+    `${q.tags.map(escapeHtml).join(" · ")}</p><h1>${escapeHtml(q.title)}</h1>${statementHtml}` +
     `<h2>Practice it as a ${TOTAL_MINUTES}-minute mock interview</h2><ol>` +
     PHASES.map((p) => `<li>${escapeHtml(p.title)} (${p.minutes} min): ${escapeHtml(p.goal)}</li>`).join("") +
     `</ol><p><a href="./">More system design interview questions</a></p></main>`;

@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { PHASES, RUBRIC } from "../content/phases";
+import { PHASES } from "../content/phases";
 import { isCustom } from "../content/questions";
 import { questionPageTitle } from "../content/site";
 import type { Question } from "../content/types";
 import { DiagramLauncher, DiagramPanel } from "../diagram/DiagramPanel";
 import type { RichEditorHandle } from "../editor/RichEditor";
 import { exportFilename, toMarkdown } from "../lib/markdown";
+import { hasAnyDiagram } from "../lib/storage";
 import { beep, unlockAudio } from "../lib/sound";
 import { useMediaQuery } from "../lib/useMediaQuery";
 import { usePrefs } from "../lib/usePrefs";
@@ -42,10 +43,12 @@ export function PracticeSession({ question, onCleared }: PracticeSessionProps) {
   const editors = useRef<Record<string, RichEditorHandle | null>>({});
   const soundOn = useRef(prefs.sound);
   const customTitle = useRecordSlice(store, (r) => r.custom.title);
-  const hasDiagram = useRecordSlice(store, (r) => r.diagram.nodes.length > 0);
+  const hasDiagram = useRecordSlice(store, hasAnyDiagram);
   // Open by default when this question already has a diagram.
   const [diagramOpen, setDiagramOpen] = useState(hasDiagram);
-  const wide = useMediaQuery("(min-width: 1100px)");
+  // The problem sidebar needs 1100px (CSS only); docking the diagram as a third
+  // column needs more, so below this it opens inline above the phases.
+  const dockDiagram = useMediaQuery("(min-width: 1500px)");
   const title = isCustom(question) ? customTitle || question.title : question.title;
 
   useEffect(() => {
@@ -162,12 +165,10 @@ export function PracticeSession({ question, onCleared }: PracticeSessionProps) {
       filename: exportFilename(custom ? record.custom.title || "custom" : question.id),
       markdown: toMarkdown({
         question,
-        title: custom ? record.custom.title || "Custom question" : question.title,
         statement: custom ? record.custom.statement : question.statement,
         record,
         timing: record.timing,
         phases: PHASES,
-        rubric: RUBRIC,
       }),
     };
   }
@@ -189,11 +190,13 @@ export function PracticeSession({ question, onCleared }: PracticeSessionProps) {
         diagramOpen={diagramOpen}
         onToggleDiagram={() => setDiagramOpen((open) => !open)}
       />
-      <main className={"wrap practice" + (diagramOpen && wide ? " has-diagram" : "")}>
-        <div className="practice-main">
+      <main className={"wrap practice" + (diagramOpen && dockDiagram ? " has-diagram" : "")}>
+        <aside className="practice-problem" aria-label="Problem">
           <ProblemHeader question={question} store={store} onClear={clearAnswers} />
+        </aside>
+        <div className="practice-main">
           {!diagramOpen && <DiagramLauncher hasDiagram={hasDiagram} onOpen={() => setDiagramOpen(true)} />}
-          {diagramOpen && !wide && <DiagramPanel store={store} docked={false} onClose={() => setDiagramOpen(false)} />}
+          {diagramOpen && !dockDiagram && <DiagramPanel store={store} docked={false} onClose={() => setDiagramOpen(false)} />}
           <div className="phases">
             {PHASES.map((phase, i) => (
               <PhaseSection
@@ -212,7 +215,7 @@ export function PracticeSession({ question, onCleared }: PracticeSessionProps) {
           </div>
           <SelfReview question={question} store={store} timer={timer} onExport={() => setExportOpen(true)} />
         </div>
-        {diagramOpen && wide && (
+        {diagramOpen && dockDiagram && (
           <aside className="practice-aside">
             <DiagramPanel store={store} docked onClose={() => setDiagramOpen(false)} />
           </aside>

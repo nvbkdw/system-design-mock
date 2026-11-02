@@ -12,6 +12,7 @@ const question: Question = {
   tags: ["storage", "caching"],
   difficulty: "easy",
   statement: "Design a URL shortening service like TinyURL. Users submit a long URL and get back a short alias.\n\nIt must stay fast.",
+  summary: "Design a URL shortening service like TinyURL. Users submit a long URL and get back a short alias.",
   clarify: ["a", "b", "c"],
   probes: ["x", "y", "z"],
 };

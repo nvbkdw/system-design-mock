@@ -1,13 +1,15 @@
 // The diagram model saved with each question. Independent of React Flow so it
 // can be serialized, tested and exported without loading the canvas.
 
-export type NodeShape = "service" | "database" | "queue" | "cache" | "client" | "external";
+export type NodeShape = "service" | "database" | "queue" | "cache" | "client" | "external" | "text";
 export type EdgeStyle = "sync" | "async";
 
 export interface DiagramNode {
   id: string;
   shape: NodeShape;
   label: string;
+  /** Secondary annotation shown under the label, e.g. "sharded by user_id". */
+  note?: string;
   x: number;
   y: number;
 }
@@ -20,6 +22,8 @@ export interface DiagramEdge {
   sourceHandle?: string;
   targetHandle?: string;
   label: string;
+  /** Secondary annotation shown under the label, e.g. "p99 < 50ms". */
+  note?: string;
   style: EdgeStyle;
 }
 
@@ -37,7 +41,12 @@ export const SHAPES: Record<NodeShape, { label: string; hint: string; mermaid: [
   cache: { label: "Cache", hint: "Redis, CDN", mermaid: ["([", "])"] },
   client: { label: "Client", hint: "User, browser, app", mermaid: ["((", "))"] },
   external: { label: "External", hint: "Third-party system", mermaid: ["[[", "]]"] },
+  // Free text on the canvas: an annotation, not a component. Its label is the text.
+  text: { label: "Text", hint: "Free text or a callout", mermaid: ["[", "]"] },
 };
+
+/** Text boxes carry their content in the label, so they have no separate note. */
+export const hasNote = (shape: NodeShape) => shape !== "text";
 
 export const SHAPE_ORDER = Object.keys(SHAPES) as NodeShape[];
 
@@ -45,6 +54,9 @@ export const EDGE_STYLES: Record<EdgeStyle, { label: string; mermaid: string }> 
   sync: { label: "Request", mermaid: "-->" },
   async: { label: "Async", mermaid: "-.->" },
 };
+
+/** `{ note }` when there is one, so empty notes aren't saved. */
+export const withNote = (note: unknown): { note?: string } => (typeof note === "string" && note ? { note } : {});
 
 /** Coerces saved data into a valid diagram, dropping anything malformed. */
 export function normalizeDiagram(value: unknown): Diagram {
@@ -57,7 +69,7 @@ export function normalizeDiagram(value: unknown): Diagram {
     (e): e is DiagramEdge => !!e && typeof e.id === "string" && ids.has(e.source) && ids.has(e.target),
   );
   return {
-    nodes: nodes.map((n) => ({ ...n, label: String(n.label ?? "") })),
-    edges: edges.map((e) => ({ ...e, label: String(e.label ?? ""), style: e.style === "async" ? "async" : "sync" })),
+    nodes: nodes.map(({ note, ...n }) => ({ ...n, label: String(n.label ?? ""), ...withNote(note) })),
+    edges: edges.map(({ note, ...e }) => ({ ...e, label: String(e.label ?? ""), ...withNote(note), style: e.style === "async" ? "async" : "sync" })),
   };
 }

@@ -11,7 +11,7 @@ export const PHASES: readonly Phase[] = [
     title: "Requirements & scope",
     short: "Requirements",
     minutes: 7,
-    goal: "Narrow the scope and write the non-functional requirements as numbers.",
+    goal: "Think like a product manager, translate design question to technical requirements, narrow the scope and write the non-functional requirements as numbers.",
     prompts: [
       "Users & scale: how many, read- vs write-heavy, global or single region?",
       "Core operations: 3–5 must-haves, and say what you are leaving out.",
@@ -32,7 +32,7 @@ export const PHASES: readonly Phase[] = [
     title: "Estimation",
     short: "Estimation",
     minutes: 3,
-    goal: "Find the number that drives the design and name the first bottleneck.",
+    goal: "Size the system: estimate the scale it must handle, find the number that drives the design, and name the first bottleneck.",
     prompts: [
       "DAU × actions/day ÷ 10⁵ = avg QPS; × 2–3 for peak; split reads and writes.",
       "Storage per year × 3 replication; bandwidth = QPS × payload size.",
@@ -64,7 +64,7 @@ export const PHASES: readonly Phase[] = [
   },
   {
     id: "architecture",
-    title: "High-level architecture",
+    title: "High-level architecture & Data flow",
     short: "Architecture",
     minutes: 10,
     goal: "Start with the simplest design that works and trace a request end to end.",

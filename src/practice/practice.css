@@ -29,17 +29,33 @@
 .tl-seg.is-current .tl-label { color: var(--on-accent); }
 
 /* ---- problem ---- */
-.practice { padding-block: 2rem 4rem; max-width: 880px; }
+/* Narrow: one column, problem on top. 1100px+: sticky problem sidebar on the
+   left, answers on the right. 1500px+ with the diagram open: a third column. */
+.practice { padding-block: 2rem 4rem; max-width: 880px; display: grid; gap: 1.25rem; align-items: start; }
 .practice-main { display: grid; gap: 1.25rem; min-width: 0; align-content: start; }
-/* Wide screens with the diagram open: answers on the left, sticky diagram on the right. */
+.practice-problem { min-width: 0; }
+@media (min-width: 1100px) {
+  .practice { max-width: 1360px; gap: 2rem; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); }
+  .practice-problem {
+    position: sticky; top: calc(var(--topbar-h, 64px) + 16px);
+    max-height: calc(100dvh - var(--topbar-h, 64px) - 32px); overflow-y: auto;
+    padding-right: 0.75rem; overscroll-behavior: contain; scrollbar-gutter: stable;
+  }
+  .practice-problem .problem-title { font-size: var(--step-2); }
+  /* Keep the bar's content aligned with the wider two-column page. */
+  .topbar-inner { max-width: 1360px; }
+}
 .practice.has-diagram {
-  max-width: 1680px; display: grid; gap: 1.5rem; align-items: start;
-  grid-template-columns: minmax(0, 1fr) minmax(440px, 46%);
+  max-width: 1920px; gap: 1.5rem;
+  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr) minmax(440px, 42%);
 }
 .practice-aside { min-width: 0; align-self: stretch; }
 .problem { display: grid; gap: 0.85rem; padding-bottom: 0.75rem; }
 .problem-title { font-size: clamp(var(--step-2), 4vw, var(--step-3)); letter-spacing: -0.015em; }
-.problem-statement { display: grid; gap: 0.6rem; font-size: var(--step-1); max-width: 68ch; }
+.problem-statement { display: grid; gap: 0.6rem; font-size: var(--step-0); line-height: 1.6; max-width: 76ch; }
+.problem-statement > * { margin: 0; }
+.problem-statement h3 { margin-top: 0.6rem; font-size: var(--step-1); }
+.problem-statement ul, .problem-statement ol { padding-left: 1.4rem; display: grid; gap: 0.3rem; }
 .problem-author { font-size: var(--step--1); color: var(--muted); }
 .hints { display: grid; gap: 0.5rem; }
 .hint { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }

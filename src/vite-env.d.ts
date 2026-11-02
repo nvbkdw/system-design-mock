@@ -6,6 +6,12 @@ declare module "virtual:question-bank" {
   export default questions;
 }
 
+declare module "virtual:question-statements" {
+  /** Question id → statement Markdown rendered to HTML at build time. */
+  const statements: Record<string, string>;
+  export default statements;
+}
+
 declare module "turndown-plugin-gfm" {
   import type TurndownService from "turndown";
   export const gfm: TurndownService.Plugin;

@@ -35,6 +35,7 @@ export const BoxNode = memo(function BoxNode({ data, selected }: NodeProps<BoxNo
     <div className={`box box-${data.shape}${selected ? " is-selected" : ""}`} title={SHAPES[data.shape].label}>
       <Outline shape={data.shape} />
       <span className="box-label">{data.label || SHAPES[data.shape].label}</span>
+      {data.note && <span className="box-note">{data.note}</span>}
       {SIDES.map(([id, position]) => (
         <Handle key={id} id={id} type="source" position={position} className="box-handle" />
       ))}

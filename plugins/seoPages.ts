@@ -15,7 +15,7 @@ import { CUSTOM_QUESTION } from "../src/content/customQuestion";
 import { questionPath } from "../src/content/routes";
 import { applyPageMeta, homeMeta, questionMeta, robotsTxt, sitemap, type PageMeta } from "../src/content/seo";
 import { SITE_NAME } from "../src/content/site";
-import { loadQuestionBank } from "./questionBank";
+import { loadQuestionBank, renderStatement } from "./questionBank";
 
 function siteUrlFromEnv(): string | undefined {
   const raw = process.env.SITE_URL?.trim();
@@ -31,7 +31,7 @@ export function seoPages(): Plugin {
     const { questions } = loadQuestionBank();
     const match = pathname.match(/^\/q\/([^/]+)\/?$/);
     const question = match && [...questions, CUSTOM_QUESTION].find((q) => q.id === match[1]);
-    return question ? questionMeta(question, siteUrl) : homeMeta(questions, siteUrl);
+    return question ? questionMeta(question, siteUrl, renderStatement(question.statement)) : homeMeta(questions, siteUrl);
   }
 
   return {
@@ -61,7 +61,7 @@ export function seoPages(): Plugin {
       write("index.html", applyPageMeta(template, home, "./", siteUrl));
       for (const question of [...questions, CUSTOM_QUESTION]) {
         // q/<id>/index.html is two levels deep, so its <base> points two levels up.
-        write(path.join(questionPath(question.id), "index.html"), applyPageMeta(template, questionMeta(question, siteUrl), "../../", siteUrl));
+        write(path.join(questionPath(question.id), "index.html"), applyPageMeta(template, questionMeta(question, siteUrl, renderStatement(question.statement)), "../../", siteUrl));
       }
       write("robots.txt", robotsTxt(siteUrl));
 

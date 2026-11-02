@@ -2,7 +2,9 @@
 // dependencies, shared by the Vite plugin, the CLI check and the tests.
 //
 // Format: a front matter block (a small YAML subset) followed by exactly the
-// sections in SECTIONS. See CONTRIBUTING.md for the contributor-facing guide.
+// sections in SECTIONS. The statement is Markdown (rendered to HTML at build
+// time); the other sections are plain bullet lists. See CONTRIBUTING.md for the
+// contributor-facing guide.
 import type { Difficulty, Question } from "./types";
 import { CUSTOM_QUESTION_ID } from "./types";
 
@@ -17,7 +19,10 @@ type SectionName = keyof typeof SECTIONS;
 
 const ID_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const TAG_PATTERN = /^[a-z0-9][a-z0-9 -]{0,23}$/;
-const LIMITS = { title: 80, statementMin: 80, statementMax: 1200, bullet: 240, minBullets: 3, maxTags: 4 };
+const LIMITS = { title: 80, statementMin: 80, statementMax: 6000, bullet: 240, minBullets: 3, maxTags: 4 };
+// The statement's HTML is injected into the page, so raw HTML is rejected to
+// keep the markup limited to what Markdown produces.
+const RAW_HTML = /<\/?[a-z][^>]*>/i;
 
 type Scalar = string | number;
 type FrontMatter = Record<string, Scalar | Scalar[]>;
@@ -65,13 +70,18 @@ function parseList(lines: string[], name: string, errors: string[]): string[] {
   return items;
 }
 
-function parseParagraphs(lines: string[]): string {
-  return lines
-    .join("\n")
-    .split(/\n\s*\n/)
-    .map((p) => p.replace(/\s*\n\s*/g, " ").trim())
-    .filter(Boolean)
-    .join("\n\n");
+/**
+ * Plain-text blurb for cards and search snippets: the statement's first prose
+ * paragraph (skipping headings, lists and quotes) with inline Markdown removed.
+ */
+export function summarize(markdown: string): string {
+  const blocks = markdown.split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean);
+  const prose = blocks.find((b) => !/^(#|[-*>]\s|\d+\.\s)/.test(b)) ?? blocks[0] ?? "";
+  return prose
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/\*\*|[*`]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 export function parseQuestion(id: string, text: string): ParseResult {
@@ -106,6 +116,7 @@ export function parseQuestion(id: string, text: string): ParseResult {
     if (!sections[name]) errors.push(`missing section "## ${name}"`);
   }
 
+  const statement = (sections.Statement ?? []).join("\n").trim();
   const question: Question = {
     id,
     title: meta.title as string,
@@ -113,7 +124,8 @@ export function parseQuestion(id: string, text: string): ParseResult {
     difficulty: meta.difficulty as Difficulty,
     ...(meta.order !== undefined && { order: meta.order as number }),
     ...(meta.author !== undefined && { author: meta.author as string }),
-    statement: parseParagraphs(sections.Statement ?? []),
+    statement,
+    summary: summarize(statement),
     clarify: parseList(sections["Interviewer answers"] ?? [], "Interviewer answers", errors),
     probes: parseList(sections["Where interviewers probe"] ?? [], "Where interviewers probe", errors),
   };
@@ -145,8 +157,9 @@ export function validateQuestion(q: Question): string[] {
     errors.push(`statement is too short; describe the product and what to design (${LIMITS.statementMin}+ chars)`);
   }
   if (q.statement.length > LIMITS.statementMax) {
-    errors.push(`statement is too long; keep it under ${LIMITS.statementMax} chars and move numbers to Interviewer answers`);
+    errors.push(`statement is too long; keep it under ${LIMITS.statementMax} chars`);
   }
+  if (RAW_HTML.test(q.statement)) errors.push("statement must be Markdown without raw HTML tags");
   if (q.clarify.length < LIMITS.minBullets) errors.push(`Interviewer answers needs at least ${LIMITS.minBullets} bullets`);
   if (q.probes.length < LIMITS.minBullets) errors.push(`Where interviewers probe needs at least ${LIMITS.minBullets} bullets`);
   for (const item of [...q.clarify, ...q.probes]) {

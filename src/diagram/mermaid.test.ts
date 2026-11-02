@@ -36,6 +36,31 @@ describe("toMermaid", () => {
     );
   });
 
+  it("exports notes as a second label line and text boxes with the note class", () => {
+    const annotated: Diagram = {
+      nodes: [
+        { id: "a", shape: "service", label: "API", x: 0, y: 0 },
+        { id: "b", shape: "database", label: "Users DB", note: "sharded by user_id", x: 0, y: 0 },
+        { id: "t", shape: "text", label: "Reads hit\nthe cache first", x: 0, y: 0 },
+      ],
+      edges: [
+        { id: "1", source: "a", target: "b", label: "writes", note: "p99 < 50ms", style: "sync" },
+        { id: "2", source: "t", target: "a", label: "", note: "hot path", style: "async" },
+      ],
+    };
+    expect(toMermaid(annotated)).toBe(
+      [
+        "flowchart LR",
+        '  n1["API"]',
+        '  n2[("Users DB<br/>sharded by user_id")]',
+        '  n3["Reads hit<br/>the cache first"]:::note',
+        '  n1 -->|"writes<br/>p99 #lt; 50ms"| n2',
+        '  n3 -.->|"hot path"| n1',
+        "  classDef note fill:none,stroke-dasharray:4 3",
+      ].join("\n"),
+    );
+  });
+
   it("skips edges whose endpoints no longer exist", () => {
     const broken = { ...diagram, edges: [{ id: "x", source: "a", target: "missing", label: "", style: "sync" as const }] };
     expect(toMermaid(broken)).not.toContain("-->");
@@ -57,5 +82,20 @@ describe("normalizeDiagram", () => {
     expect(result.nodes.map((n) => n.id)).toEqual(["a"]);
     expect(result.edges).toEqual([]);
     expect(normalizeDiagram(undefined)).toEqual({ nodes: [], edges: [] });
+  });
+
+  it("keeps notes and text boxes, and drops empty or invalid notes", () => {
+    const result = normalizeDiagram({
+      nodes: [
+        { id: "a", shape: "text", label: "Callout", x: 0, y: 0 },
+        { id: "b", shape: "cache", label: "Redis", note: "TTL 5 min", x: 0, y: 0 },
+        { id: "c", shape: "service", label: "API", note: "", x: 0, y: 0 },
+      ],
+      edges: [{ id: "1", source: "b", target: "c", label: "", note: 42, style: "sync" }],
+    });
+    expect(result.nodes.map((n) => n.shape)).toEqual(["text", "cache", "service"]);
+    expect(result.nodes[1].note).toBe("TTL 5 min");
+    expect(result.nodes[2]).not.toHaveProperty("note");
+    expect(result.edges[0]).not.toHaveProperty("note");
   });
 });

@@ -8,8 +8,10 @@ export interface Question {
   difficulty: Difficulty;
   order?: number;
   author?: string;
-  /** Paragraphs separated by a blank line. */
+  /** The full problem, as Markdown. Rendered for the practice page at build time. */
   statement: string;
+  /** Plain-text first paragraph of the statement, for cards and search snippets. */
+  summary: string;
   /** What the interviewer answers when asked clarifying questions. */
   clarify: string[];
   /** Areas the interviewer pushes on. */

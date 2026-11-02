@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 import { FEEDBACK_PROMPT } from "../content/feedbackPrompt";
-import { PHASES, RUBRIC } from "../content/phases";
+import { PHASES } from "../content/phases";
 import type { Question } from "../content/types";
 import { emptyRecord } from "./storage";
 import { exportFilename, htmlToMarkdown, toMarkdown } from "./markdown";
@@ -35,28 +35,28 @@ describe("htmlToMarkdown", () => {
 
 describe("toMarkdown", () => {
   const question: Question = {
-    id: "q", title: "Rate limits", tags: ["x"], difficulty: "medium", statement: "Design it.", clarify: [], probes: [],
+    id: "q", title: "Rate limits", tags: ["x"], difficulty: "medium", statement: "Design it.", summary: "Design it.", clarify: [], probes: [],
   };
 
-  it("includes the problem, every phase, timing and the self-review", () => {
+  it("includes the problem, every phase and timing, but not the self-review", () => {
     const record = emptyRecord();
     record.answers.requirements = "<p>Hello</p>";
-    record.rubric.nfr = true;
+    record.rubric.nfr = true; // ticked on the page, but not exported
     const timing = { ...record.timing, used: { requirements: 7.5 * 60_000 } };
     const md = toMarkdown({
-      question, title: question.title, statement: question.statement, record, timing,
-      phases: PHASES, rubric: RUBRIC, now: new Date(2026, 9, 24),
+      question, statement: question.statement, record, timing,
+      phases: PHASES,
     });
-    expect(md).toContain("# Rate limits");
-    expect(md).toContain("*Exported 2026-10-24 · Timed: 07:30 of 50:00*");
+    expect(md).toContain("# System Design Problem Statement\n\nDesign it.\n");
     expect(md).toContain("| Requirements & scope | 07:00 | 07:30 | +00:30 |");
     expect(md).toContain("## 1. Requirements & scope\n\n*Budget 7 min · used 07:30*\n\nHello");
     expect(md).toContain("## 6. Failures, ops & evolution");
     expect(md).toContain("*(no answer)*");
-    expect(md).toContain("- [x] Clarified requirements and wrote NFRs as numbers");
+    expect(md).not.toContain("Self-review");
+    expect(md).not.toContain("Clarified requirements");
   });
 
-  it("exports the diagram as a fenced Mermaid block before the phases", () => {
+  it("exports each diagram as a fenced Mermaid block before the phases", () => {
     const record = emptyRecord();
     record.diagram = {
       nodes: [
@@ -65,29 +65,39 @@ describe("toMarkdown", () => {
       ],
       edges: [{ id: "e", source: "a", target: "b", label: "", style: "sync" }],
     };
-    const md = toMarkdown({ question, title: "T", statement: "S", record, timing: record.timing, phases: PHASES, rubric: RUBRIC });
-    expect(md).toContain('## Diagram\n\n```mermaid\nflowchart LR\n  n1["API"]\n  n2[("DB")]\n  n1 --> n2\n```');
-    expect(md.indexOf("## Diagram")).toBeLessThan(md.indexOf("## 1. Requirements"));
+    record.sequences = [
+      { id: "s1", title: "Write path", code: "sequenceDiagram\n  A ->> B: hi\n" },
+      { id: "s2", title: "Blank", code: "  " },
+    ];
+    const md = toMarkdown({ question, statement: "S", record, timing: record.timing, phases: PHASES });
+    expect(md).toContain(
+      '## Diagrams\n\n### Architecture\n\n```mermaid\nflowchart LR\n  n1["API"]\n  n2[("DB")]\n  n1 --> n2\n```\n\n' +
+        "### Write path\n\n```mermaid\nsequenceDiagram\n  A ->> B: hi\n```\n\n## 1. Requirements",
+    );
+    expect(md).not.toContain("### Blank");
   });
 
   it("omits the diagram section when nothing is drawn", () => {
     const record = emptyRecord();
-    const md = toMarkdown({ question, title: "T", statement: "S", record, timing: record.timing, phases: PHASES, rubric: RUBRIC });
-    expect(md).not.toContain("## Diagram");
+    const md = toMarkdown({ question, statement: "S", record, timing: record.timing, phases: PHASES });
+    expect(md).not.toContain("## Diagrams");
   });
 
-  it("ends with the feedback prompt, after the self-review", () => {
+  it("starts with the feedback prompt as instructions, then the problem", () => {
     const record = emptyRecord();
-    const md = toMarkdown({ question, title: "T", statement: "S", record, timing: record.timing, phases: PHASES, rubric: RUBRIC });
-    expect(md.endsWith("## Feedback request\n\n" + FEEDBACK_PROMPT + "\n")).toBe(true);
-    expect(md.indexOf("## Self-review")).toBeLessThan(md.indexOf("## Feedback request"));
+    const md = toMarkdown({ question, statement: "S", record, timing: record.timing, phases: PHASES });
+    expect(md.startsWith(FEEDBACK_PROMPT + "\n\n# System Design Problem Statement\n\nS\n")).toBe(true);
+    expect(md).toContain("\nS\n\n# My Design Solution (break down into 6 progressive phases):\n\n## 1. Requirements & scope\n");
+    expect(md).not.toContain("Exported");
+    expect(md.split(FEEDBACK_PROMPT)).toHaveLength(2);
+    expect(md).not.toContain("## Feedback request");
   });
 
   it("omits timing for untimed practice", () => {
     const record = emptyRecord();
-    const md = toMarkdown({ question, title: "T", statement: "S", record, timing: record.timing, phases: PHASES, rubric: RUBRIC });
-    expect(md).toContain("Untimed practice");
+    const md = toMarkdown({ question, statement: "S", record, timing: record.timing, phases: PHASES });
     expect(md).not.toContain("## Timing");
+    expect(md).not.toContain("*Budget");
   });
 });
 
