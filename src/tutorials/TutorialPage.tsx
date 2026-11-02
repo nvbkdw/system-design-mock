@@ -1,9 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Link, Navigate, useLocation, useParams } from "react-router-dom";
 import chapters from "virtual:tutorial-book";
 import { TUTORIALS_ROUTE, chapterPath, chapterRoute } from "../content/routes";
 import { TUTORIALS_DESCRIPTION, TUTORIALS_NAME, TUTORIALS_TITLE, chapterPageTitle } from "../content/site";
 import type { RenderedChapter } from "../content/types";
+import { renderMermaid } from "../lib/renderMermaid";
 import { SiteHeader } from "../ui/SiteHeader";
 import "./tutorials.css";
 
@@ -50,13 +51,44 @@ function TableOfContents() {
   );
 }
 
+/**
+ * Replaces each ```mermaid block in `root` with its rendered diagram. The code
+ * block stays in the static HTML, so crawlers and failed renders show the source.
+ * Blocks render one at a time: Mermaid's renderer is not safe to run concurrently.
+ */
+async function renderDiagrams(root: HTMLElement, cancelled: () => boolean) {
+  for (const code of root.querySelectorAll<HTMLElement>("pre > code.language-mermaid")) {
+    const result = await renderMermaid(code.textContent ?? "");
+    if (cancelled()) return;
+    const pre = code.parentElement!;
+    if (!result.ok) {
+      pre.dataset.error = result.error;
+      continue;
+    }
+    const figure = document.createElement("figure");
+    figure.className = "diagram";
+    figure.innerHTML = result.svg; // sanitized by Mermaid's strict security level
+    pre.replaceWith(figure);
+  }
+}
+
 function ChapterView({ chapter }: { chapter: RenderedChapter }) {
   const { hash } = useLocation();
+  const body = useRef<HTMLDivElement>(null);
   const prev = chapters[chapter.number - 2];
   const next = chapters[chapter.number];
 
   useEffect(() => {
     document.title = chapterPageTitle(chapter.title);
+  }, [chapter]);
+
+  // React resets the body's HTML when the chapter changes, so render on each change.
+  useEffect(() => {
+    let cancelled = false;
+    if (body.current) void renderDiagrams(body.current, () => cancelled);
+    return () => {
+      cancelled = true;
+    };
   }, [chapter]);
 
   // A new chapter starts at the top, unless the URL points at a section.
@@ -98,7 +130,7 @@ function ChapterView({ chapter }: { chapter: RenderedChapter }) {
           <p className="eyebrow">Chapter {chapter.number}</p>
           <h1 className="reader-title">{chapter.title}</h1>
           {/* Built from the repo's own Markdown at build time; raw HTML is rejected by the parser. */}
-          <div className="prose" dangerouslySetInnerHTML={{ __html: chapter.html }} />
+          <div className="prose" ref={body} dangerouslySetInnerHTML={{ __html: chapter.html }} />
         </article>
 
         <nav className="pager" aria-label="Chapter navigation">

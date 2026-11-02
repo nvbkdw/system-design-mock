@@ -7,6 +7,7 @@ import path from "node:path";
 import { Marked } from "marked";
 import type { Plugin } from "vite";
 import { parseTutorialBook, slugify, type BookResult } from "../src/content/tutorialFormat";
+import { chapterPath } from "../src/content/routes";
 import type { Chapter, ChapterSection, RenderedChapter } from "../src/content/types";
 
 const MODULE_ID = "virtual:tutorial-book";
@@ -41,7 +42,8 @@ export function renderChapter(chapter: Chapter): RenderedChapter {
       },
     },
   });
-  const html = marked.parse(chapter.markdown, { async: false });
+  // Pages set <base> to the site root, so an in-page "#anchor" link must carry the chapter's path.
+  const html = marked.parse(chapter.markdown, { async: false }).replaceAll('href="#', `href="${chapterPath(chapter.id)}#`);
   return { ...chapter, html, sections };
 }
 

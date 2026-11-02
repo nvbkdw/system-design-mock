@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRecordSlice, type RecordStore } from "../practice/RecordStore";
 import { ArmedButton } from "../ui/ArmedButton";
-import { renderMermaid } from "./renderMermaid";
+import { renderMermaid } from "../lib/renderMermaid";
 import { newSequence, sequenceTitle, type SequenceDiagram } from "./sequence";
 
 const PREVIEW_DELAY_MS = 300;

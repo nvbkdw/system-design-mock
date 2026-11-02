@@ -51,6 +51,17 @@
 .prose th, .prose td { border: 1px solid var(--line); padding: 0.5rem 0.7rem; text-align: left; vertical-align: top; min-width: 9rem; }
 .prose th { background: var(--surface); font-weight: 600; }
 
+/* Mermaid diagrams: centered, scroll sideways on narrow screens. */
+.prose .diagram {
+  margin: 0; padding: 1rem; overflow-x: auto; text-align: center;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+}
+.prose .diagram svg { height: auto; max-width: 100%; }
+.prose pre { margin: 0; padding: 0.85rem 1rem; overflow-x: auto; background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px; }
+.prose pre code { background: none; padding: 0; }
+/* A diagram that failed to render keeps its source, with the error below. */
+.prose pre[data-error]::after { content: attr(data-error); display: block; margin-top: 0.75rem; color: var(--over); white-space: pre-wrap; }
+
 .pager { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; border-top: 1px solid var(--line); padding-top: 1.5rem; }
 .pager-link {
   display: grid; gap: 0.25rem; padding: 0.9rem 1rem; border: 1px solid var(--line); border-radius: var(--radius);
@@ -66,5 +77,16 @@
   .toc-sections { display: none; }
 }
 @media (max-width: 560px) {
-  .pager { grid-template-columns: 1fr; }
+  /* Mermaid diagrams: centered, scroll sideways on narrow screens. */
+.prose .diagram {
+  margin: 0; padding: 1rem; overflow-x: auto; text-align: center;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+}
+.prose .diagram svg { height: auto; max-width: 100%; }
+.prose pre { margin: 0; padding: 0.85rem 1rem; overflow-x: auto; background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px; }
+.prose pre code { background: none; padding: 0; }
+/* A diagram that failed to render keeps its source, with the error below. */
+.prose pre[data-error]::after { content: attr(data-error); display: block; margin-top: 0.75rem; color: var(--over); white-space: pre-wrap; }
+
+.pager { grid-template-columns: 1fr; }
 }

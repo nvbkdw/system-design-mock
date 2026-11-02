@@ -34,9 +34,11 @@ export function parseChapter(file: string, text: string): ChapterResult {
   else if (title.length > LIMITS.title) errors.push(`title is ${title.length} chars; keep it under ${LIMITS.title}`);
   if (typeof summary !== "string" || !summary) errors.push("summary is required");
   else if (summary.length > LIMITS.summary) errors.push(`summary is ${summary.length} chars; keep it under ${LIMITS.summary}`);
+  // Code may legitimately contain "# comments" and "<tags>", so check prose only.
+  const prose = markdown.replace(/```[\s\S]*?```|`[^`\n]*`/g, "");
   if (!markdown) errors.push("chapter body is empty");
-  if (/^#\s/m.test(markdown)) errors.push("use ## and below in the body; the title is the chapter's only # heading");
-  if (RAW_HTML.test(markdown.replace(/```[\s\S]*?```|`[^`\n]*`/g, ""))) errors.push("body must be Markdown without raw HTML tags");
+  if (/^#\s/m.test(prose)) errors.push("use ## and below in the body; the title is the chapter's only # heading");
+  if (RAW_HTML.test(prose)) errors.push("body must be Markdown without raw HTML tags");
 
   if (errors.length) return { ok: false, errors };
   return { ok: true, chapter: { id: name[2], number: Number(name[1]), title: title as string, summary: summary as string, markdown } };

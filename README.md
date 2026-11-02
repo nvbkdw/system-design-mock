@@ -91,7 +91,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). In short: copy `questions/_template.md` 
 
 ## Adding tutorial chapters
 
-The tutorial at `/tutorials/` is a short book built from `tutorials/<NN>-<id>.md`. `NN` is the chapter number and `<id>` the URL slug, so chapters can be reordered without breaking links. Each file has `title` and `summary` front matter and a Markdown body that starts at `##`; raw HTML is rejected. Numbers must run 1, 2, 3… without gaps. `npm test` validates the book.
+The tutorial at `/tutorials/` is a short book built from `tutorials/<NN>-<id>.md`. `NN` is the chapter number and `<id>` the URL slug, so chapters can be reordered without breaking links. Each file has `title` and `summary` front matter and a Markdown body that starts at `##`; raw HTML is rejected. Numbers must run 1, 2, 3… without gaps. Fenced ` ```mermaid ` blocks render as diagrams in the page. Link within a chapter with `#anchor` and to other chapters with `tutorials/<id>/#anchor`. `npm test` validates the book: format, Mermaid syntax and internal links.
 
 ## Architecture
 
@@ -121,6 +121,7 @@ src/
   lib/
     storage.ts                 localStorage records and prefs (fails soft)
     markdown.ts                HTML → Markdown export via Turndown (tested)
+    renderMermaid.ts           Lazy-loads Mermaid and renders source to SVG (sequence preview, tutorials)
     time.ts, sound.ts, download.ts, repo.ts, usePrefs.ts
   editor/RichEditor.tsx        TipTap editor with toolbar and outline insert
   diagram/
@@ -129,7 +130,6 @@ src/
     mermaid.ts                 Diagram → Mermaid flowchart, export blocks, label escaping (pure, tested)
     DiagramPanel.tsx           Panel shell, Mermaid view; lazy-loads the canvas
     SequenceView.tsx           Sequence tab: Mermaid source editor and live preview
-    renderMermaid.ts           Lazy-loads Mermaid and renders source to SVG
     DiagramCanvas.tsx          React Flow canvas: palette, connections, inspector
     BoxNode.tsx, flow.ts       Custom box shapes; model ↔ React Flow conversion
   home/                        Home page and question cards

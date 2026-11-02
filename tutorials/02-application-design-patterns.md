@@ -7,6 +7,8 @@ Deep dives are where you name patterns: outbox, saga, CQRS, circuit breaker. Nam
 
 One rule ties this chapter together: **first decide who owns the authoritative state and which correctness guarantee you need. Then choose the smallest combination of patterns that keeps that guarantee under the failures you must tolerate.**
 
+This chapter is the map. The next three chapters cover each level in depth, with mechanisms, diagrams, numbers and real-world examples: [low-level primitives](tutorials/low-level-primitives/), [infrastructure building blocks](tutorials/infrastructure-building-blocks/) and [architectural patterns](tutorials/architectural-patterns/).
+
 ## Three levels of design
 
 Patterns work at different scopes, and each level answers a different question:
@@ -75,6 +77,8 @@ Patterns compose without implying each other. A saga might use outbox delivery, 
 
 ## Low-level primitives
 
+*In depth: [Chapter 3](tutorials/low-level-primitives/).*
+
 ### State and concurrency
 
 | Primitive | Use it for | Watch out for |
@@ -119,6 +123,8 @@ An idempotency key should carry the caller's intent. Hashing the payload is not 
 Consensus and atomic commit solve different problems: agreeing on replicated state versus committing every participant of a transaction. Neither replaces the other.
 
 ## Infrastructure building blocks
+
+*In depth: [Chapter 4](tutorials/infrastructure-building-blocks/).*
 
 ### Serving and resilience
 
@@ -177,6 +183,8 @@ Replication copies the same data; sharding splits different data. They solve dif
 - **Backup, restore and failover:** replication copies corruption and deletions too, a backup is not proven until you restore it, and failover must fence the old writer.
 
 ## Architectural patterns
+
+*In depth: [Chapter 5](tutorials/architectural-patterns/).*
 
 ### Application structure
 

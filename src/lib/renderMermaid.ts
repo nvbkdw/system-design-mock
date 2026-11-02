@@ -1,4 +1,4 @@
-// Renders Mermaid source to SVG for the live preview. Mermaid is large, so it
+// Renders Mermaid source to SVG (sequence preview, tutorial diagrams). Mermaid is large, so it
 // is imported on first use and lands in its own chunk.
 import type { Mermaid } from "mermaid";
 
@@ -26,6 +26,7 @@ function load(): Promise<Mermaid> {
         primaryBorderColor: token("--line"),
         lineColor: token("--muted"),
         textColor: token("--ink"),
+        edgeLabelBackground: token("--surface"),
       },
     });
     return mermaid;

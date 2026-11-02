@@ -23,8 +23,9 @@ describe("parseChapter", () => {
     expect(html.ok || html.errors).toEqual(["body must be Markdown without raw HTML tags"]);
   });
 
-  it("allows angle brackets inside code", () => {
+  it("allows angle brackets and # comments inside code", () => {
     expect(parseChapter("01-a.md", chapter("A", "## X\n\nUse `<base>` here.\n\n```\n<div></div>\n```")).ok).toBe(true);
+    expect(parseChapter("01-a.md", chapter("A", "## X\n\n```python\n# retry with jitter\nsleep(1)\n```")).ok).toBe(true);
   });
 });
 
