@@ -222,6 +222,7 @@ Scatter-gather needs an explicit **completion rule**: all responses, a deadline,
 |---|---|---|
 | [Anti-corruption layer](tutorials/architectural-patterns/#anti-corruption-layer) (M) | Keeping a legacy or external model out of your domain | Semantic mapping, testing, possible latency; may stay forever |
 | [Strangler fig](tutorials/architectural-patterns/#strangler-fig-migration) (H) | Replacing a system too risky to cut over at once | Running both, data migration, clear write ownership at each stage |
+| [Zero-downtime schema migration](tutorials/architectural-patterns/#zero-downtime-schema-migration-expand-and-contract) (M–H) | Changing a schema under live traffic | Several deploys, backfill time, dual-write code paths, hidden readers of the old shape |
 | [Control / data plane separation](tutorials/architectural-patterns/#control-plane-and-data-plane-separation) (H) | Management changes far less often than serving | Config propagation, stale state; data-plane requests must not call the control plane |
 | [Cells, deployment stamps](tutorials/architectural-patterns/#cells-and-deployment-stamps) (H) | Containing failures, overload and rollouts as you grow | Spare capacity, tenant moves, routing; a shared critical dependency defeats isolation |
 | [Multi-region](tutorials/architectural-patterns/#multi-region-architecture) (H–VH) | Latency, disaster recovery, data residency | WAN latency, failover ambiguity, conflicts, cost; active-active serving is not multi-writer data |
@@ -341,7 +342,7 @@ One application can use CRUD for most records, event sourcing for one domain, an
 
 In production, every pattern needs an operating plan:
 
-- **Migrations:** expand, migrate, then contract, so old and new versions coexist. Rolling back code does not undo database changes or external effects.
+- **Migrations:** [expand, migrate, then contract](tutorials/architectural-patterns/#zero-downtime-schema-migration-expand-and-contract), so old and new versions coexist. Rolling back code does not undo database changes or external effects.
 - **Ownership of stuck work:** for every asynchronous path, name who owns stalled work, what alerts, and how it is repaired.
 - **What to track:** propagation lag, oldest pending work, dedup hits, failed compensations and rebuild progress, next to user-facing latency and errors.
 - **Recovery drills:** set RPO (acceptable data loss) and RTO (acceptable downtime) targets and test restores; a backup's existence proves nothing.

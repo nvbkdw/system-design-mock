@@ -801,6 +801,93 @@ sequenceDiagram
 
 Sources: [Fowler, Strangler Fig Application](https://martinfowler.com/bliki/StranglerFigApplication.html), [AWS, Strangler fig](https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/strangler-fig.html), [GitHub, Scientist](https://github.blog/developer-skills/application-development/scientist/).
 
+### Zero-downtime schema migration (expand and contract)
+
+**What it is.** Change a database schema under live traffic by splitting one breaking change into a sequence of small deploys, each compatible with the one before it. You first **expand** the schema so old and new shapes coexist, **migrate** code and data across, then **contract** by removing the old shape. Fowler calls the general technique parallel change.
+
+**Why one deploy can't do it.** A rolling deploy runs the old version N and the new version N+1 side by side for minutes, and a rollback brings N back. So every schema state must work with two adjacent application versions. Renaming `email` to `email_address` in one step breaks every N instance the moment the migration runs, and breaks N+1 if it runs late. The fix is never to change a shape in place: add the new one, move over, then delete the old one.
+
+**How it works.** Take that rename as the example. Each row is a separate deploy, and you move to the next only when its gate passes:
+
+| Step | Schema | Writes go to | Reads come from | Gate before the next step |
+|---|---|---|---|---|
+| 1. Expand | Add `email_address`, nullable | Old only (code unchanged) | Old | DDL applied on primary and all replicas |
+| 2. Dual write, then backfill | Both columns | **Both**, in one transaction | Old | Backfill done; a scan finds no rows where the columns differ |
+| 3. Switch reads | Both columns | New only (see below) | New, falling back to old if new is null | Read comparison shows no mismatches; no error spike |
+| 4. New only | Both columns | New | New; the fallback to old is removed | No code path, job or report touches the old column |
+| 5. Contract | Archive, then drop `email` | New | New | Done |
+
+Dual writes alone only cover rows written after step 2, so the **backfill** copies the history in small batches. Step 3's fallback read (`COALESCE(email_address, email)`) also covers a row the backfill hasn't reached yet.
+
+**The sharp edge in step 3.** Step 3 changes reads and writes in the same deploy, and that breaks the "two adjacent versions" rule. During its rolling deploy, step-2 instances still read the old column while step-3 instances have stopped writing it, so some users see stale values. A rollback to step 2 has the same problem. The safe order splits the step: **3a** switches reads to new while still writing both; **3b** stops writing the old column once no step-2 instance remains. Stripe used this order: dual write, switch reads (verified by comparing old and new results with GitHub's Scientist), then switch writes, then remove old data.
+
+```mermaid
+flowchart TD
+  E["1. Expand: add new column"] --> D["2. Dual write, read old"]
+  D --> B["Backfill old rows in batches"]
+  B --> V{"Columns match?"}
+  V -- no --> B
+  V -- yes --> R["3a. Read new, still write both"]
+  R --> W["3b. Stop writing old"]
+  W --> N["4. Remove fallback read"]
+  N --> C["5. Archive, then drop old"]
+```
+
+```mermaid
+sequenceDiagram
+  participant N0 as App version N
+  participant N1 as App version N+1
+  participant DB as Database
+  Note over N0,N1: rolling deploy, both versions serve traffic
+  N0->>DB: write email (step 1 code)
+  N1->>DB: write email and email_address in one transaction
+  N0->>DB: read email: still correct
+  N1->>DB: read email: still correct
+  Note over N0,DB: every step keeps the previous version working
+```
+
+**DDL that doesn't lock the table (PostgreSQL).** Most `ALTER TABLE` forms take an `ACCESS EXCLUSIVE` lock. The real outage risk is the lock queue: an `ALTER` waiting behind one long-running query blocks every later query on that table. So:
+
+```sql
+SET lock_timeout = '2s';                              -- give up quickly, then retry
+ALTER TABLE users ADD COLUMN email_address text;      -- metadata only, no rewrite
+
+-- step 2: backfill in batches, between deploys
+UPDATE users SET email_address = email
+WHERE id >= 1000000 AND id < 1001000 AND email_address IS NULL;
+
+-- before relying on the new column: constrain without a long lock
+ALTER TABLE users ADD CONSTRAINT email_address_present
+  CHECK (email_address IS NOT NULL) NOT VALID;        -- skips the full-table scan
+ALTER TABLE users VALIDATE CONSTRAINT email_address_present;  -- weaker lock, writes continue
+ALTER TABLE users ALTER COLUMN email_address SET NOT NULL;    -- scan skipped: valid CHECK proves it
+CREATE UNIQUE INDEX CONCURRENTLY users_email_address ON users (email_address);
+
+-- step 5, once nothing reads it
+ALTER TABLE users DROP COLUMN email;
+```
+
+Adding a column with no default or a non-volatile default stores the default in metadata, so it doesn't rewrite the table. A volatile default such as `clock_timestamp()` does. On MySQL 8.0, `ALGORITHM=INSTANT` is the default for adding columns since 8.0.12, at any position since 8.0.29, and for dropping columns since 8.0.29. A table allows at most 64 instant row versions before it must be rebuilt. Changes MySQL can't do in place, such as type changes on big tables, use an online schema-change tool: pt-online-schema-change keeps a shadow table in sync with triggers, while GitHub's gh-ost tails the binlog instead, so it can pause entirely and lets you choose when to cut over.
+
+**Numbers.**
+
+- **Backfill time** = rows ÷ sustained rate. With batches of 1,000 rows taking 20 ms each and a 50 ms pause between them, you copy roughly 14,000 rows/s. A 500 M-row table takes about 500,000,000 ÷ 14,000 ≈ 36,000 s, or 10 hours. Run it as a resumable job that records its last ID, and throttle when replica lag rises (for example, pause while lag exceeds 1 s).
+- **Lock-queue blast radius**: an `ALTER` stuck behind a 30 s query on a table serving 2,000 queries/s queues roughly 60,000 queries. With `lock_timeout = '2s'`, the worst case is about 4,000 queued queries and a retry.
+- **Why Stripe parallelized**: at one second per object, migrating 100 million objects one by one would take over three years. Stripe generated the work list offline from database snapshots (MapReduce in Scalding) and copied with many parallel workers.
+- **Calendar time**: five steps means at least five deploys, each with a bake period that covers a daily traffic cycle. Expect days to weeks for one breaking change, not minutes.
+
+**Where it's used.** Stripe moved hundreds of millions of subscription records from the customer table to their own table with this sequence, keeping all services at 100% availability and never changing more than a few hundred lines of code at once. GitHub built gh-ost for its MySQL fleet. The same expand and contract shape applies to APIs (add the new field, migrate consumers, remove the old one) and to message schemas.
+
+**Trade-offs and failure modes.**
+
+- **Slow and code-heavy:** the dual period carries two code paths and needs cleanup; skipping the contract step leaves the schema worse than before.
+- **Dual writes across two stores aren't atomic.** Keep both columns in one database transaction, or use a trigger, CDC or an outbox when the target is another store. Divergence otherwise needs reconciliation.
+- **Hidden readers:** replicas, caches, serialized objects, ETL jobs, analytics and other services may still read the old column. Find them before step 5.
+- **Dropping is one-way.** Archive the old data and keep a restore path; once dropped, no code rollback brings it back.
+- **Constraints and indexes on a big table** must use the non-blocking forms above, or a NOT NULL or unique index added in step 1 locks the table.
+
+Sources: [Fowler, Parallel Change](https://martinfowler.com/bliki/ParallelChange.html), [Stripe, Online migrations at scale](https://stripe.com/blog/online-migrations), [PostgreSQL ALTER TABLE](https://www.postgresql.org/docs/current/sql-altertable.html), [MySQL online DDL](https://dev.mysql.com/doc/refman/8.0/en/innodb-online-ddl-operations.html), [gh-ost](https://github.com/github/gh-ost).
+
 ### Control plane and data plane separation
 
 **What it is.** Split the system into a **control plane** that makes changes (create, configure, scale, delete) and a **data plane** that serves the traffic using the resulting configuration. Design the data plane to keep working with its last known configuration when the control plane is down: **static stability**.
