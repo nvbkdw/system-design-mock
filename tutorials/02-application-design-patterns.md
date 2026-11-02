@@ -57,38 +57,38 @@ During a network partition, a replicated service cannot both answer linearizably
 
 ## The patterns you'll name most
 
-A quick reference for the patterns that come up most in interviews. The catalog after it covers the rest.
+A quick reference for the patterns that come up most in interviews; each name links to its in-depth section. The catalog after it covers the rest.
 
 | Pattern | Main benefit | Main cost or trade-off |
 |---|---|---|
-| Anti-corruption layer | Keeps an external model from leaking into your domain | Translation logic and contract maintenance |
-| API routing | Gives clients a stable route to services | Shared configuration, policy coordination, routing failures |
-| Circuit breaker | Stops wasting resources on a failing dependency | False trips, threshold tuning, recovery probes |
-| Event sourcing | Lets you reconstruct domain history | Event evolution, replay, projections, correcting past events |
-| Hexagonal architecture | Separates business logic from integrations | Extra interfaces and adapters |
-| Pub/sub | Lets independent consumers react to one fact | Subscriber lag, schema evolution, delivery semantics |
-| Retry with backoff | Recovers from transient failures | Duplicate effects and load amplification |
-| Saga (orchestration or choreography) | Coordinates committed work across services | Intermediate states, compensation, durable recovery |
-| Scatter-gather | Parallelizes requests or computation | Slow branches, fan-out load, partial results |
-| Strangler fig | Replaces a system incrementally | Running both systems and migrating write ownership |
-| Transactional outbox | Closes the database-then-message dual-write gap | Relay operations, duplicate delivery, cleanup and ordering |
+| [Anti-corruption layer](tutorials/architectural-patterns/#anti-corruption-layer) | Keeps an external model from leaking into your domain | Translation logic and contract maintenance |
+| [API routing](tutorials/infrastructure-building-blocks/#api-gateway-and-routing) | Gives clients a stable route to services | Shared configuration, policy coordination, routing failures |
+| [Circuit breaker](tutorials/infrastructure-building-blocks/#circuit-breaker) | Stops wasting resources on a failing dependency | False trips, threshold tuning, recovery probes |
+| [Event sourcing](tutorials/architectural-patterns/#event-sourcing) | Lets you reconstruct domain history | Event evolution, replay, projections, correcting past events |
+| [Hexagonal architecture](tutorials/architectural-patterns/#hexagonal-architecture-ports-and-adapters) | Separates business logic from integrations | Extra interfaces and adapters |
+| [Pub/sub](tutorials/infrastructure-building-blocks/#publish-subscribe) | Lets independent consumers react to one fact | Subscriber lag, schema evolution, delivery semantics |
+| [Retry with backoff](tutorials/infrastructure-building-blocks/#retry-with-backoff-and-jitter) | Recovers from transient failures | Duplicate effects and load amplification |
+| Saga ([orchestration](tutorials/architectural-patterns/#saga-orchestration) or [choreography](tutorials/architectural-patterns/#saga-choreography)) | Coordinates committed work across services | Intermediate states, compensation, durable recovery |
+| [Scatter-gather](tutorials/architectural-patterns/#scatter-gather) | Parallelizes requests or computation | Slow branches, fan-out load, partial results |
+| [Strangler fig](tutorials/architectural-patterns/#strangler-fig-migration) | Replaces a system incrementally | Running both systems and migrating write ownership |
+| [Transactional outbox](tutorials/infrastructure-building-blocks/#transactional-outbox) | Closes the database-then-message dual-write gap | Relay operations, duplicate delivery, cleanup and ordering |
 
 Patterns compose without implying each other. A saga might use outbox delivery, idempotent consumers and pub/sub, and none of them requires event sourcing.
 
 ## Low-level primitives
 
-*In depth: [Chapter 3](tutorials/low-level-primitives/).*
+*In depth: [Chapter 3](tutorials/low-level-primitives/). Each pattern name below links to its section.*
 
 ### State and concurrency
 
 | Primitive | Use it for | Watch out for |
 |---|---|---|
-| Atomic operations, compare-and-swap (L–M) | Counters, unique claims, state transitions | Protects one key, not an invariant across keys; contention causes retries |
-| Local transactions and constraints (L–M) | The default for business operations in one store | Long transactions hold resources; choose isolation deliberately; remote calls stay outside the commit |
-| Pessimistic locking (M) | Short critical sections with real contention | Deadlocks, hot rows, locks held across slow work |
-| Optimistic concurrency (M) | Rare conflicts, or when waiting is costly | Retry storms under contention; checking one row's version can miss an invariant across rows |
-| Write-ahead and append-only logs (M) | Durability, replication, ordered records | Flush latency, retention, replay cost; a storage WAL is not a domain-event model |
-| Snapshots and checkpoints (M) | Faster recovery and replay | Saving state and offset inconsistently loses or repeats work; a local snapshot is not a backup |
+| [Atomic operations, compare-and-swap](tutorials/low-level-primitives/#atomic-operations-and-compare-and-swap) (L–M) | Counters, unique claims, state transitions | Protects one key, not an invariant across keys; contention causes retries |
+| [Local transactions and constraints](tutorials/low-level-primitives/#local-transactions-and-constraints) (L–M) | The default for business operations in one store | Long transactions hold resources; choose isolation deliberately; remote calls stay outside the commit |
+| [Pessimistic locking](tutorials/low-level-primitives/#pessimistic-locking) (M) | Short critical sections with real contention | Deadlocks, hot rows, locks held across slow work |
+| [Optimistic concurrency](tutorials/low-level-primitives/#optimistic-concurrency-control) (M) | Rare conflicts, or when waiting is costly | Retry storms under contention; checking one row's version can miss an invariant across rows |
+| [Write-ahead](tutorials/low-level-primitives/#write-ahead-log) and [append-only logs](tutorials/low-level-primitives/#append-only-logs-and-lsm-trees) (M) | Durability, replication, ordered records | Flush latency, retention, replay cost; a storage WAL is not a domain-event model |
+| [Snapshots and checkpoints](tutorials/low-level-primitives/#snapshots-and-checkpoints) (M) | Faster recovery and replay | Saving state and offset inconsistently loses or repeats work; a local snapshot is not a backup |
 
 A row lock in the database that already owns the data is usually simpler than a separate distributed lock. Make a transaction protect the actual invariant, not just wrap the code.
 
@@ -96,15 +96,15 @@ A row lock in the database that already owns the data is usually simpler than a 
 
 | Primitive | Use it for | Watch out for |
 |---|---|---|
-| Request/reply (L–M) | Immediate validation or results from a known authority | A timeout leaves the outcome unknown; every sync hop spends latency and availability |
-| Deadlines and cancellation (M) | Every remote call and expensive request path | Cancellation is cooperative; timing out does not undo a remote commit |
-| Acknowledgments (M) | Reliable messaging, resumable consumers | Ack before durable work risks loss; ack after it allows duplicates after a crash |
-| Operation IDs and deduplication (M) | Retried mutations, payments, jobs, message consumption | The dedup record and the effect must commit together; define key scope, retention and reuse with a different payload |
-| Sequence numbers, logical clocks (M) | Detecting stale updates, per-entity ordering | Wall clocks and sortable IDs do not give a trustworthy global order |
-| Heartbeats (M) | Membership, replacing workers, leader recovery | A slow or partitioned node looks dead while it is still running |
-| Leases and fencing tokens (H) | Leaders or workers writing shared state | Lease expiry does not stop a paused old owner; the resource must reject old tokens |
-| Bounded buffers, backpressure (M) | Every queue, pool and streaming stage | Backpressure moves delay upstream; an unbounded queue turns overload into memory exhaustion or stale work |
-| Semaphores, token buckets (M) | Protecting dependencies, tenant quotas | Concurrency and rate are different limits; exact global limits need coordination |
+| [Request/reply](tutorials/low-level-primitives/#request-reply) (L–M) | Immediate validation or results from a known authority | A timeout leaves the outcome unknown; every sync hop spends latency and availability |
+| [Deadlines and cancellation](tutorials/low-level-primitives/#deadlines-and-cancellation) (M) | Every remote call and expensive request path | Cancellation is cooperative; timing out does not undo a remote commit |
+| [Acknowledgments](tutorials/low-level-primitives/#acknowledgments-and-delivery-semantics) (M) | Reliable messaging, resumable consumers | Ack before durable work risks loss; ack after it allows duplicates after a crash |
+| [Operation IDs and deduplication](tutorials/low-level-primitives/#operation-ids-idempotency-keys-and-deduplication) (M) | Retried mutations, payments, jobs, message consumption | The dedup record and the effect must commit together; define key scope, retention and reuse with a different payload |
+| [Sequence numbers, logical clocks](tutorials/low-level-primitives/#sequence-numbers-and-logical-clocks) (M) | Detecting stale updates, per-entity ordering | Wall clocks and sortable IDs do not give a trustworthy global order |
+| [Heartbeats](tutorials/low-level-primitives/#heartbeats-and-failure-detection) (M) | Membership, replacing workers, leader recovery | A slow or partitioned node looks dead while it is still running |
+| [Leases and fencing tokens](tutorials/low-level-primitives/#leases-and-fencing-tokens) (H) | Leaders or workers writing shared state | Lease expiry does not stop a paused old owner; the resource must reject old tokens |
+| [Bounded buffers, backpressure](tutorials/low-level-primitives/#bounded-buffers-and-backpressure) (M) | Every queue, pool and streaming stage | Backpressure moves delay upstream; an unbounded queue turns overload into memory exhaustion or stale work |
+| [Semaphores](tutorials/low-level-primitives/#semaphores-and-concurrency-limits), [token buckets](tutorials/low-level-primitives/#token-bucket-and-leaky-bucket) (M) | Protecting dependencies, tenant quotas | Concurrency and rate are different limits; exact global limits need coordination |
 
 An idempotency key should carry the caller's intent. Hashing the payload is not enough, because two identical requests can both be intended.
 
@@ -112,50 +112,50 @@ An idempotency key should carry the caller's intent. Hashing the payload is not 
 
 | Primitive | Use it for | Watch out for |
 |---|---|---|
-| Consensus (Raft, Paxos) (H) | Coordination metadata, leader terms, strongly consistent services | Needs a quorum to make progress; adds write latency; does not make side effects transactional |
-| Quorum reads and writes (H) | Tunable replicated storage | Quorum overlap alone is not linearizability; failover, read repair and membership matter |
-| Replication (M–H) | Availability, disaster recovery, locality, read scale | Async copies lag and can lose acknowledged writes on failover; sync copies add waiting |
-| Partitioning (H) | Capacity beyond one node, data locality | Hot keys, cross-partition operations, rebalancing; consistent hashing reduces remapping, not hot keys |
-| Two-phase commit (H) | Short atomic transactions across compatible participants | Blocks after coordinator failure and holds locks; gives atomic commit, not isolation |
-| Gossip, anti-entropy (M–H) | Membership, background convergence | Temporarily inconsistent; cannot elect a unique leader |
-| CRDTs (H) | Collaborative or offline data, counters, sets | Constrained semantics; convergence does not enforce invariants such as "no overselling" |
+| [Consensus (Raft, Paxos)](tutorials/low-level-primitives/#consensus-raft-and-paxos) (H) | Coordination metadata, leader terms, strongly consistent services | Needs a quorum to make progress; adds write latency; does not make side effects transactional |
+| [Quorum reads and writes](tutorials/low-level-primitives/#quorum-reads-and-writes) (H) | Tunable replicated storage | Quorum overlap alone is not linearizability; failover, read repair and membership matter |
+| [Replication](tutorials/low-level-primitives/#replication) (M–H) | Availability, disaster recovery, locality, read scale | Async copies lag and can lose acknowledged writes on failover; sync copies add waiting |
+| [Partitioning](tutorials/low-level-primitives/#partitioning-and-consistent-hashing) (H) | Capacity beyond one node, data locality | Hot keys, cross-partition operations, rebalancing; consistent hashing reduces remapping, not hot keys |
+| [Two-phase commit](tutorials/low-level-primitives/#two-phase-commit) (H) | Short atomic transactions across compatible participants | Blocks after coordinator failure and holds locks; gives atomic commit, not isolation |
+| [Gossip, anti-entropy](tutorials/low-level-primitives/#gossip-and-anti-entropy) (M–H) | Membership, background convergence | Temporarily inconsistent; cannot elect a unique leader |
+| [CRDTs](tutorials/low-level-primitives/#crdts) (H) | Collaborative or offline data, counters, sets | Constrained semantics; convergence does not enforce invariants such as "no overselling" |
 
 Consensus and atomic commit solve different problems: agreeing on replicated state versus committing every participant of a transaction. Neither replaces the other.
 
 ## Infrastructure building blocks
 
-*In depth: [Chapter 4](tutorials/infrastructure-building-blocks/).*
+*In depth: [Chapter 4](tutorials/infrastructure-building-blocks/). Each pattern name below links to its section.*
 
 ### Serving and resilience
 
 | Building block | Use it for | Watch out for |
 |---|---|---|
-| Discovery and load balancing (M) | Many instances, changing membership | Stale membership, uneven load, health checks that trigger cascades |
-| Stateless serving, autoscaling (M) | Horizontally scalable handlers and workers | State and downstream capacity still cap scale; cold starts and multiplied connection pools |
-| API gateway (M) | A coherent public API, auth integration, request limits | A shared bottleneck and failure domain; keep business logic out of it |
-| Retry with backoff and jitter (M) | Transient failures on safe operations | Amplifies overload and repeats effects; retry at one layer, within the deadline |
-| Circuit breaker (M) | Repeated dependency failures that waste resources | Tuning and false trips; does not limit concurrency or repair the dependency |
-| Bulkheads (M) | Keeping one dependency or tenant from consuming everyone's capacity | Stranded spare capacity; quotas need maintenance |
-| Rate limits, load shedding (M) | Protecting an overloaded service, tenant fairness | Rejections need product behavior; queues and retries must not bypass the limit |
-| Graceful degradation (M) | Optional features such as recommendations | Never fake success for a required operation |
-| Hedged requests (H) | Tail latency when spare capacity exists | Extra load; not for unsafe mutations or an already overloaded dependency |
+| [Discovery and load balancing](tutorials/infrastructure-building-blocks/#service-discovery-and-load-balancing) (M) | Many instances, changing membership | Stale membership, uneven load, health checks that trigger cascades |
+| [Stateless serving, autoscaling](tutorials/infrastructure-building-blocks/#stateless-serving-and-autoscaling) (M) | Horizontally scalable handlers and workers | State and downstream capacity still cap scale; cold starts and multiplied connection pools |
+| [API gateway](tutorials/infrastructure-building-blocks/#api-gateway-and-routing) (M) | A coherent public API, auth integration, request limits | A shared bottleneck and failure domain; keep business logic out of it |
+| [Retry with backoff and jitter](tutorials/infrastructure-building-blocks/#retry-with-backoff-and-jitter) (M) | Transient failures on safe operations | Amplifies overload and repeats effects; retry at one layer, within the deadline |
+| [Circuit breaker](tutorials/infrastructure-building-blocks/#circuit-breaker) (M) | Repeated dependency failures that waste resources | Tuning and false trips; does not limit concurrency or repair the dependency |
+| [Bulkheads](tutorials/infrastructure-building-blocks/#bulkheads) (M) | Keeping one dependency or tenant from consuming everyone's capacity | Stranded spare capacity; quotas need maintenance |
+| [Rate limits, load shedding](tutorials/infrastructure-building-blocks/#rate-limits-and-load-shedding) (M) | Protecting an overloaded service, tenant fairness | Rejections need product behavior; queues and retries must not bypass the limit |
+| [Graceful degradation](tutorials/infrastructure-building-blocks/#graceful-degradation) (M) | Optional features such as recommendations | Never fake success for a required operation |
+| [Hedged requests](tutorials/infrastructure-building-blocks/#hedged-requests) (H) | Tail latency when spare capacity exists | Extra load; not for unsafe mutations or an already overloaded dependency |
 
-**Routing** picks a destination; it never authorizes the caller. Hostname routing gives clear ownership at the cost of more DNS, certificates and cross-origin setup. Path routing gives one origin, but shared routing config means coordination and a larger failure domain. Header routing selects versions or experiments without changing the URL, but it is harder to debug, cache keys must include the header, and an untrusted header must never grant access.
+**[Routing](tutorials/infrastructure-building-blocks/#api-gateway-and-routing)** picks a destination; it never authorizes the caller. Hostname routing gives clear ownership at the cost of more DNS, certificates and cross-origin setup. Path routing gives one origin, but shared routing config means coordination and a larger failure domain. Header routing selects versions or experiments without changing the URL, but it is harder to debug, cache keys must include the header, and an untrusted header must never grant access.
 
 ### Messaging and execution
 
 | Building block | Use it for | Watch out for |
 |---|---|---|
-| Work queue, competing consumers (M) | Background tasks, absorbing bursts | Redelivery, poison jobs, lease expiry; more workers do not help a saturated downstream |
-| Pub/sub (M) | Several independent reactions to one fact | Subscriber lag, duplicates, schema evolution |
-| Retained partitioned log (H) | Replay, independent readers, ordered streams | Retention, partition sizing, rebalances; order holds only within a partition |
-| Change data capture (M–H) | Feeding search, analytics, caches or an outbox relay | Bootstrap races, log retention, schema coupling; row changes do not express business intent |
-| Transactional outbox (M–H) | A local commit must eventually trigger a message | Duplicate sends, relay backlog, ordering, cleanup; does not commit the consumer's state |
-| Inbox, idempotent consumer (M–H) | Consumers of messages that may repeat | Dedup retention; an external API still needs its own idempotency |
-| Dead-letter queue (M) | Isolating poison messages for repair and replay | A DLQ is unresolved work; skipping a message can break ordering or stall a workflow |
-| Scheduler, worker pool (M) | Delayed actions, batch jobs, expirations | Duplicate scheduling, missed deadlines, ownership transfer |
-| Durable workflow engine (H) | Long-running coordination, timers, cancellation, human waits | Workflow versioning and history; activities can still run more than once |
-| Reconciliation controller (H) | Converging observed state to desired state | Conflicting controllers, oscillation, unsafe repeated actions |
+| [Work queue, competing consumers](tutorials/infrastructure-building-blocks/#work-queue-and-competing-consumers) (M) | Background tasks, absorbing bursts | Redelivery, poison jobs, lease expiry; more workers do not help a saturated downstream |
+| [Pub/sub](tutorials/infrastructure-building-blocks/#publish-subscribe) (M) | Several independent reactions to one fact | Subscriber lag, duplicates, schema evolution |
+| [Retained partitioned log](tutorials/infrastructure-building-blocks/#retained-partitioned-log) (H) | Replay, independent readers, ordered streams | Retention, partition sizing, rebalances; order holds only within a partition |
+| [Change data capture](tutorials/infrastructure-building-blocks/#change-data-capture) (M–H) | Feeding search, analytics, caches or an outbox relay | Bootstrap races, log retention, schema coupling; row changes do not express business intent |
+| [Transactional outbox](tutorials/infrastructure-building-blocks/#transactional-outbox) (M–H) | A local commit must eventually trigger a message | Duplicate sends, relay backlog, ordering, cleanup; does not commit the consumer's state |
+| [Inbox, idempotent consumer](tutorials/infrastructure-building-blocks/#inbox-and-idempotent-consumer) (M–H) | Consumers of messages that may repeat | Dedup retention; an external API still needs its own idempotency |
+| [Dead-letter queue](tutorials/infrastructure-building-blocks/#dead-letter-queue-and-redrive) (M) | Isolating poison messages for repair and replay | A DLQ is unresolved work; skipping a message can break ordering or stall a workflow |
+| [Scheduler, worker pool](tutorials/infrastructure-building-blocks/#job-scheduler-and-worker-pool) (M) | Delayed actions, batch jobs, expirations | Duplicate scheduling, missed deadlines, ownership transfer |
+| [Durable workflow engine](tutorials/infrastructure-building-blocks/#durable-workflow-engine) (H) | Long-running coordination, timers, cancellation, human waits | Workflow versioning and history; activities can still run more than once |
+| [Reconciliation controller](tutorials/infrastructure-building-blocks/#reconciliation-controller) (H) | Converging observed state to desired state | Conflicting controllers, oscillation, unsafe repeated actions |
 
 A queue, a pub/sub topic and a retained log are different consumption models: each job goes to one worker; each subscription gets every message; each consumer tracks its own position in the log. One product can offer several.
 
@@ -163,40 +163,40 @@ A queue, a pub/sub topic and a retained log are different consumption models: ea
 
 | Building block | Use it for | Watch out for |
 |---|---|---|
-| Indexes, cursor pagination (L–M) | The first fix for slow selective queries and large listings | Write and storage cost; cursors need a stable sort order |
-| Cache-aside, read-through (M) | Repeated reads with a stated freshness tolerance | Staleness, stampedes, cold-cache spikes, invalidation races |
-| Write-through, write-behind (M–H) | Workloads that justify a cache in the write path | Write-behind can lose or reorder acknowledged writes without a durable buffer |
-| Read replicas (M) | High read load with tolerable lag | Read-your-writes breaks; the primary's write bottleneck stays |
-| Sharding (H) | A measured write or storage bottleneck | Cross-shard transactions and joins, hot tenants, resharding |
-| Materialized views, search indexes (M–H) | Aggregates, search, expensive joins | Update amplification, lag, backfills, rebuilds; not an authoritative record |
-| Object storage, claim check (M) | Large payloads, passed by reference | Access control, cleanup, keeping object and message lifetimes in step |
-| CDN, edge caching (M) | Public or safely cacheable content | Invalidation, cache-key mistakes, private data leaking |
-| Batching, connection pooling (L–M) | Overhead-dominated small operations | Batching adds waiting; pools can hide a queue or swamp the database as services scale out |
+| [Indexes, cursor pagination](tutorials/infrastructure-building-blocks/#indexes-and-pagination) (L–M) | The first fix for slow selective queries and large listings | Write and storage cost; cursors need a stable sort order |
+| [Cache-aside, read-through](tutorials/infrastructure-building-blocks/#cache-aside-and-read-through) (M) | Repeated reads with a stated freshness tolerance | Staleness, stampedes, cold-cache spikes, invalidation races |
+| [Write-through, write-behind](tutorials/infrastructure-building-blocks/#write-through-and-write-behind) (M–H) | Workloads that justify a cache in the write path | Write-behind can lose or reorder acknowledged writes without a durable buffer |
+| [Read replicas](tutorials/infrastructure-building-blocks/#read-replicas) (M) | High read load with tolerable lag | Read-your-writes breaks; the primary's write bottleneck stays |
+| [Sharding](tutorials/infrastructure-building-blocks/#sharded-database-and-shard-router) (H) | A measured write or storage bottleneck | Cross-shard transactions and joins, hot tenants, resharding |
+| [Materialized views, search indexes](tutorials/infrastructure-building-blocks/#materialized-views-and-search-indexes) (M–H) | Aggregates, search, expensive joins | Update amplification, lag, backfills, rebuilds; not an authoritative record |
+| [Object storage, claim check](tutorials/infrastructure-building-blocks/#object-storage-and-claim-check) (M) | Large payloads, passed by reference | Access control, cleanup, keeping object and message lifetimes in step |
+| [CDN, edge caching](tutorials/infrastructure-building-blocks/#cdn-and-edge-caching) (M) | Public or safely cacheable content | Invalidation, cache-key mistakes, private data leaking |
+| [Batching, connection pooling](tutorials/infrastructure-building-blocks/#batching-and-connection-pooling) (L–M) | Overhead-dominated small operations | Batching adds waiting; pools can hide a queue or swamp the database as services scale out |
 
 Replication copies the same data; sharding splits different data. They solve different scaling problems.
 
 ### Shared operations
 
-- **Service mesh and sidecars** standardize transport, identity and telemetry, at the cost of proxy latency and harder diagnosis. A mesh cannot infer business idempotency.
-- **Identity and authorization** belong at every trust boundary. A gateway-only check misses internal access paths.
-- **Metrics, logs and tracing** must propagate context across queues as well as RPCs. A trace is not a durable audit record.
-- **Backup, restore and failover:** replication copies corruption and deletions too, a backup is not proven until you restore it, and failover must fence the old writer.
+- **[Service mesh and sidecars](tutorials/infrastructure-building-blocks/#sidecar-ambassador-and-service-mesh)** standardize transport, identity and telemetry, at the cost of proxy latency and harder diagnosis. A mesh cannot infer business idempotency.
+- **[Identity and authorization](tutorials/infrastructure-building-blocks/#identity-and-authorization)** belong at every trust boundary. A gateway-only check misses internal access paths.
+- **[Metrics, logs and tracing](tutorials/infrastructure-building-blocks/#metrics-logs-and-distributed-tracing)** must propagate context across queues as well as RPCs. A trace is not a durable audit record.
+- **[Backup, restore and failover](tutorials/infrastructure-building-blocks/#backup-restore-failover-and-repair):** replication copies corruption and deletions too, a backup is not proven until you restore it, and failover must fence the old writer.
 
 ## Architectural patterns
 
-*In depth: [Chapter 5](tutorials/architectural-patterns/).*
+*In depth: [Chapter 5](tutorials/architectural-patterns/). Each pattern name below links to its section.*
 
 ### Application structure
 
 | Pattern | Use it for | Watch out for |
 |---|---|---|
-| CRUD transactional application (L–M) | The default: profiles, catalogs, admin, most operational systems | History needs an explicit mechanism; careless read-modify-write loses updates |
-| Layered design, domain model (L–M) | Procedures for simple rules; a richer model for interacting invariants | Excess layers obscure simple work; hidden data access creates expensive queries |
-| Modular monolith (L–M) | Domain boundaries still evolving | Shared releases; weak boundaries are hard to extract later |
-| Bounded-context services, private data (H) | Teams, scaling or release cycles justify independent deploys | Remote joins, cross-service invariants, contract evolution; one service per table is excessive coupling |
-| Shared database across services (M at first) | A deliberate transition | Schema and runtime coupling undermine independent releases |
-| API composition, backends for frontends (M–H) | Fresh data from a few services; very different client needs | Latency and failures accumulate; orchestration gets duplicated |
-| Hexagonal architecture (M) | Important domain logic with several integrations and isolated tests | Extra interfaces; network, schema and transaction constraints remain |
+| [CRUD transactional application](tutorials/architectural-patterns/#crud-and-transactional-application) (L–M) | The default: profiles, catalogs, admin, most operational systems | History needs an explicit mechanism; careless read-modify-write loses updates |
+| [Layered design, domain model](tutorials/architectural-patterns/#transaction-script-layered-design-and-domain-model) (L–M) | Procedures for simple rules; a richer model for interacting invariants | Excess layers obscure simple work; hidden data access creates expensive queries |
+| [Modular monolith](tutorials/architectural-patterns/#modular-monolith) (L–M) | Domain boundaries still evolving | Shared releases; weak boundaries are hard to extract later |
+| [Bounded-context services, private data](tutorials/architectural-patterns/#bounded-context-services-and-private-data-ownership) (H) | Teams, scaling or release cycles justify independent deploys | Remote joins, cross-service invariants, contract evolution; one service per table is excessive coupling |
+| [Shared database across services](tutorials/architectural-patterns/#shared-database-across-services) (M at first) | A deliberate transition | Schema and runtime coupling undermine independent releases |
+| [API composition, backends for frontends](tutorials/architectural-patterns/#synchronous-api-composition-and-backends-for-frontends) (M–H) | Fresh data from a few services; very different client needs | Latency and failures accumulate; orchestration gets duplicated |
+| [Hexagonal architecture](tutorials/architectural-patterns/#hexagonal-architecture-ports-and-adapters) (M) | Important domain logic with several integrations and isolated tests | Extra interfaces; network, schema and transaction constraints remain |
 
 CRUD describes data operations; REST describes an interface. A domain command such as `CancelOrder` works fine on ordinary tables inside one transaction.
 
@@ -204,15 +204,15 @@ CRUD describes data operations; REST describes an interface. A domain command su
 
 | Pattern | Use it for | Watch out for |
 |---|---|---|
-| Event-driven integration (M–H) | Independent downstream reactions | Schema dependencies, lag, ordering, harder end-to-end debugging |
-| CQRS (M–H) | Write rules and read shapes that differ enough to need separate models | More models; separate stores add propagation, freshness rules and rebuilds |
-| Event sourcing (H–VH) | Domains where reconstructing history is a core requirement | Event evolution, replay, projections, sensitive data, correcting past mistakes |
-| Saga orchestration (H) | Multi-service processes with branches, timeouts or manual steps | Coordinator state and versioning, intermediate states, failed compensations |
-| Saga choreography (H–VH) | A small, stable set of participants | A hidden global process, cycles, unclear timeout ownership |
-| Reservation / Try-Confirm-Cancel (H) | Scarce inventory or capacity | Expiry, stranded reservations, confirm/cancel races; not global ACID |
-| Scatter-gather (M–H) | Federated search, quotes, partitioned queries | Tail latency, fan-out load, partial results |
-| Pipes and filters (M–H) | Ingestion, media and data processing | Bottleneck stages, checkpointing, duplicate effects, stage versions |
-| Single-writer entity, actors (M–H) | Games, sessions, aggregates where local order matters | Hot entities cap throughput; ownership transfer and durability need design |
+| [Event-driven integration](tutorials/architectural-patterns/#event-driven-integration) (M–H) | Independent downstream reactions | Schema dependencies, lag, ordering, harder end-to-end debugging |
+| [CQRS](tutorials/architectural-patterns/#cqrs) (M–H) | Write rules and read shapes that differ enough to need separate models | More models; separate stores add propagation, freshness rules and rebuilds |
+| [Event sourcing](tutorials/architectural-patterns/#event-sourcing) (H–VH) | Domains where reconstructing history is a core requirement | Event evolution, replay, projections, sensitive data, correcting past mistakes |
+| [Saga orchestration](tutorials/architectural-patterns/#saga-orchestration) (H) | Multi-service processes with branches, timeouts or manual steps | Coordinator state and versioning, intermediate states, failed compensations |
+| [Saga choreography](tutorials/architectural-patterns/#saga-choreography) (H–VH) | A small, stable set of participants | A hidden global process, cycles, unclear timeout ownership |
+| [Reservation / Try-Confirm-Cancel](tutorials/architectural-patterns/#reservation-and-try-confirm-cancel) (H) | Scarce inventory or capacity | Expiry, stranded reservations, confirm/cancel races; not global ACID |
+| [Scatter-gather](tutorials/architectural-patterns/#scatter-gather) (M–H) | Federated search, quotes, partitioned queries | Tail latency, fan-out load, partial results |
+| [Pipes and filters](tutorials/architectural-patterns/#pipes-and-filters) (M–H) | Ingestion, media and data processing | Bottleneck stages, checkpointing, duplicate effects, stage versions |
+| [Single-writer entity, actors](tutorials/architectural-patterns/#single-writer-entity-and-actor-ownership) (M–H) | Games, sessions, aggregates where local order matters | Hot entities cap throughput; ownership transfer and durability need design |
 
 Scatter-gather needs an explicit **completion rule**: all responses, a deadline, a required subset, or "good enough". Events come in two shapes. A notification ("order 42 changed") forces a follow-up query. Event-carried state ("order 42 shipped to …") lets consumers act alone, at the cost of larger payloads and stronger schema obligations.
 
@@ -220,11 +220,11 @@ Scatter-gather needs an explicit **completion rule**: all responses, a deadline,
 
 | Pattern | Use it for | Watch out for |
 |---|---|---|
-| Anti-corruption layer (M) | Keeping a legacy or external model out of your domain | Semantic mapping, testing, possible latency; may stay forever |
-| Strangler fig (H) | Replacing a system too risky to cut over at once | Running both, data migration, clear write ownership at each stage |
-| Control / data plane separation (H) | Management changes far less often than serving | Config propagation, stale state; data-plane requests must not call the control plane |
-| Cells, deployment stamps (H) | Containing failures, overload and rollouts as you grow | Spare capacity, tenant moves, routing; a shared critical dependency defeats isolation |
-| Multi-region (H–VH) | Latency, disaster recovery, data residency | WAN latency, failover ambiguity, conflicts, cost; active-active serving is not multi-writer data |
+| [Anti-corruption layer](tutorials/architectural-patterns/#anti-corruption-layer) (M) | Keeping a legacy or external model out of your domain | Semantic mapping, testing, possible latency; may stay forever |
+| [Strangler fig](tutorials/architectural-patterns/#strangler-fig-migration) (H) | Replacing a system too risky to cut over at once | Running both, data migration, clear write ownership at each stage |
+| [Control / data plane separation](tutorials/architectural-patterns/#control-plane-and-data-plane-separation) (H) | Management changes far less often than serving | Config propagation, stale state; data-plane requests must not call the control plane |
+| [Cells, deployment stamps](tutorials/architectural-patterns/#cells-and-deployment-stamps) (H) | Containing failures, overload and rollouts as you grow | Spare capacity, tenant moves, routing; a shared critical dependency defeats isolation |
+| [Multi-region](tutorials/architectural-patterns/#multi-region-architecture) (H–VH) | Latency, disaster recovery, data residency | WAN latency, failover ambiguity, conflicts, cost; active-active serving is not multi-writer data |
 
 ## CRUD, CQRS, event sourcing and outbox are separate decisions
 
