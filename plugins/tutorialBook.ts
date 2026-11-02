@@ -22,6 +22,11 @@ export function loadTutorialBook(dir = TUTORIALS_DIR): BookResult {
   return parseTutorialBook(files);
 }
 
+const ENTITIES: Record<string, string> = { "&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": '"', "&#39;": "'" };
+
+/** Plain text of inline HTML from marked: tags dropped, the entities marked escapes decoded. */
+const htmlToText = (html: string) => html.replace(/<[^>]+>/g, "").replace(/&(?:amp|lt|gt|quot|#39);/g, (e) => ENTITIES[e]);
+
 /** Renders a chapter body, giving every heading an id and collecting the ## headings as sections. */
 export function renderChapter(chapter: Chapter): RenderedChapter {
   const taken = new Set<string>();
@@ -31,7 +36,7 @@ export function renderChapter(chapter: Chapter): RenderedChapter {
       heading({ tokens, depth, text }) {
         const id = slugify(text, taken);
         const inner = this.parser.parseInline(tokens);
-        if (depth === 2) sections.push({ id, title: inner.replace(/<[^>]+>/g, "") });
+        if (depth === 2) sections.push({ id, title: htmlToText(inner) });
         return `<h${depth} id="${id}">${inner}</h${depth}>\n`;
       },
     },

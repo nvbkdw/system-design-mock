@@ -17,8 +17,8 @@ export const TUTORIALS_NAME = "System Design Interview Tutorial";
 export const TUTORIALS_TITLE = `${TUTORIALS_NAME} · ${SITE_NAME}`;
 
 export const TUTORIALS_DESCRIPTION =
-  "A short, free tutorial on system design interviews: how the interview runs, what interviewers score, " +
-  "the six phases of a strong answer, and how to prepare.";
+  "A free tutorial on system design interviews: how the interview runs, the six phases of a strong answer, " +
+  "how to prepare, and the distributed application patterns to reach for in deep dives.";
 
 /** Browser tab and search result title for a tutorial chapter. */
 export const chapterPageTitle = (chapterTitle: string) => `${chapterTitle} · ${TUTORIALS_NAME}`;

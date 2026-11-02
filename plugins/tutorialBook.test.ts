@@ -4,12 +4,12 @@ import { loadRenderedBook, loadTutorialBook, renderChapter } from "./tutorialBoo
 
 describe("renderChapter", () => {
   it("gives headings ids and lists the ## headings as sections", () => {
-    const rendered = renderChapter({ id: "a", number: 1, title: "A", summary: "S", markdown: "## The **clock**\n\n### Detail\n\n## Prep" });
+    const rendered = renderChapter({ id: "a", number: 1, title: "A", summary: "S", markdown: "## The **clock**\n\n### Detail\n\n## You'll need Q&A" });
     expect(rendered.html).toContain('<h2 id="the-clock">The <strong>clock</strong></h2>');
     expect(rendered.html).toContain('<h3 id="detail">Detail</h3>');
     expect(rendered.sections).toEqual([
       { id: "the-clock", title: "The clock" },
-      { id: "prep", title: "Prep" },
+      { id: "you-ll-need-q-a", title: "You'll need Q&A" },
     ]);
   });
 });
