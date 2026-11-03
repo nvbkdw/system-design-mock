@@ -517,6 +517,8 @@ sequenceDiagram
 
 **Backlog drain time:** a backlog `B` drains at `(μ − λ)`, capacity minus arrivals. 1.2 M jobs, 600/s capacity, 500/s arrivals: `1,200,000 / 100 = 12,000 s ≈ 3.3 hours`. Small headroom means slow recovery.
 
+**A queue does not create capacity.** In-flight work follows the same law: at 10,000 jobs/s and 0.2 s each, 2,000 are in flight; if the downstream slows to 2 s at the same arrival rate, 20,000 are. When arrivals exceed capacity, the backlog grows at `λ − μ` per second until something drops or rejects work. Admission control and [bulkheads](#bulkheads) bound the damage.
+
 **Visibility timeout** should exceed the p99.9 processing time, or slow jobs run twice; but a long timeout delays retry after a crash.
 
 #### Where it's used
@@ -529,6 +531,7 @@ Amazon SQS, RabbitMQ, Google Cloud Tasks, Celery, Sidekiq (Redis), and PostgreSQ
 - **Poison jobs** fail forever and block capacity until a DLQ catches them.
 - **No ordering** across workers in a standard queue.
 - **More workers do not help a saturated downstream.** If every job writes to the same database, 10× workers gives 10× database load.
+- **Queue length hides trouble.** Alert on the age of the oldest message and on completion throughput; a short queue of stuck jobs and a long queue draining fast look the same by length.
 
 Sources: [SQS visibility timeout](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html), [Competing consumers pattern](https://learn.microsoft.com/en-us/azure/architecture/patterns/competing-consumers), [PostgreSQL SKIP LOCKED](https://www.postgresql.org/docs/current/sql-select.html#SQL-FOR-UPDATE-SHARE).
 
@@ -768,6 +771,20 @@ Alternatives when you can't use a shared transaction:
 - **Naturally idempotent writes:** `SET status = 'SHIPPED'` or an upsert keyed by event ID.
 - **Version checks:** apply an event only if `event.version > row.version`. This also drops stale out-of-order events.
 - **Downstream idempotency keys:** pass the message ID as the `Idempotency-Key` to an external API such as Stripe.
+
+**Outbox and inbox together, crash by crash.** An order change must cause an update in another service's database. Every crash point has a safe outcome:
+
+| Failure point | Safe behavior | What makes it safe |
+|---|---|---|
+| Source transaction aborts | Neither the order change nor its publication happens | State and outbox row in one local transaction |
+| Source commits, service crashes before publishing | The outbox row is still there to deliver later | Durable outbox and a recovering relay |
+| Broker accepts, relay crashes before marking progress | The relay publishes again with the same message ID | At-least-once publishing plus downstream dedup |
+| Consumer crashes before committing | A later delivery retries the work | Broker redelivery or log replay |
+| Consumer commits, crashes before acking | The redelivery sees the effect already happened | Inbox ID and effects in one transaction |
+| An external API succeeds but the response is lost | Outcome unknown: retry with the same key or reconcile | The external API's idempotency or status contract |
+| A permanent error blocks progress | Surface the stuck work and repair or compensate | [DLQ](#dead-letter-queue-and-redrive), workflow state, alerts, a human |
+
+**Exactly-once effects exist only inside one atomic boundary.** A broker's guarantee does not cover your consumer's database, a payment processor or an email.
 
 ```mermaid
 flowchart TD

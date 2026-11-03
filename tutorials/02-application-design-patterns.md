@@ -3,7 +3,7 @@ title: Application design patterns
 summary: A map of distributed application patterns, from low-level primitives to architecture: what each one guarantees, what it costs, and how to choose the smallest design that stays correct.
 ---
 
-Deep dives are where you name patterns: outbox, saga, CQRS, circuit breaker. Naming them earns nothing. Interviewers listen for whether you know what each pattern guarantees, what it does **not** guarantee, and what it costs to run.
+Naming a design pattern themself earns nothing. Interviewers listen for whether you make the right trade-off, what each pattern guarantees, what it does **not** guarantee, what are alternatives, why favor A over B.
 
 One rule ties this chapter together: **first decide who owns the authoritative state and which correctness guarantee you need. Then choose the smallest combination of patterns that keeps that guarantee under the failures you must tolerate.**
 
@@ -33,27 +33,84 @@ Patterns work at different scopes, and each level answers a different question:
 | | Business coordination | Saga orchestration, saga choreography, reservations / Try-Confirm-Cancel, scatter-gather, pipes and filters, single-writer entities |
 | | Evolution and isolation | Anti-corruption layers, strangler migrations, control/data plane separation, cells, multi-region architecture |
 
-The levels describe the scope of a decision, not a strict stack. **Pub/sub and the transactional outbox are infrastructure building blocks; CQRS, event sourcing and sagas are architectural choices.** Hexagonal architecture is architectural too, but it governs code dependencies inside one application, not distribution across machines.
+The levels describe the scope of a decision, not a strict software stack.
 
 **Complexity ratings** in the tables below: **L** adds little machinery; **M** adds a policy or another component; **H** adds cross-component state, failure recovery or real operational work; **VH** makes correctness or recovery an ongoing specialist concern. Ratings assume mature databases and middleware, and they rise sharply when patterns interact.
 
 ## Guarantees to define first
 
-Pick the guarantee before the pattern. Each one is narrower than it sounds:
+Pick the guarantee before the pattern. A guarantee is the system-level promise that protects a business invariant, such as "a seat is sold once" or "a charge happens once." It is the top of a chain: **invariant → guarantee → trade-off under failure → pattern → implementation detail.** Get the guarantee wrong and every decision below it protects the wrong thing.
+
+Each guarantee is narrower than it sounds:
 
 | Guarantee | What it means | What it does not imply |
 |---|---|---|
 | Atomicity | A transaction's changes commit or abort together | Protection for remote API calls or messages outside that transaction |
-| Serializability | Concurrent transactions behave as if run one at a time | That the default isolation level protects every business invariant |
-| Linearizability | Each operation appears to happen at one instant, in real-time order | Atomic multi-record transactions |
+| Serializability | Concurrent transactions behave as if run one at a time | Real-time order: a transaction may see state older than one that already committed. Nor that the default isolation level protects every business invariant |
+| Linearizability (strong consistency) | Data behaves as if there is one copy: each operation appears to happen at one instant, in real-time order, so every read sees every write acknowledged before it | Atomic multi-record transactions, or a scope wider than the system promises (often one key, not a query across keys) |
 | Eventual consistency | Replicas converge once updates stop and propagation makes progress | A staleness bound, read-your-writes, or automatic conflict resolution |
 | Durability | Acknowledged data survives the failures the replication contract covers | Survival of every disaster, operator mistake or loss of all replicas |
 | Idempotency | Repeating the same logical operation has no extra effect | Effects on other systems, or that a new operation may reuse an old key |
 | Ordering | A defined scope (one entity, one partition) keeps a sequence | A global order across partitions, or ordered external effects |
 
-Database isolation and distributed consistency answer different questions. PostgreSQL's default Read Committed level allows anomalies across statements, and serializable transactions can fail and need retries.
+**ACID and CAP both say "consistency" but answer different questions.**
 
-During a network partition, a replicated service cannot both answer linearizably and complete every request at every node. Treat CAP as a decision about **which operations wait, which reject, and which tolerate divergence**, not as "pick two letters".
+- **ACID: what happens when transactions run concurrently or fail, within one database?** Isolation (the I) sets which interleavings are allowed. Read Committed, a common default, allows anomalies across statements; Serializable behaves as if transactions ran one at a time, but transactions can abort and need retries. ACID's C only means transactions keep the invariants the application defines.
+- **CAP and consistency models: what can a reader see when data has several copies?** This is about replication: whether a read reflects the latest write, from linearizable (behaves like one copy) down to eventual.
+
+They interact but don't imply each other. A serializable database can serve stale reads from an async replica, and a linearizable store can't make a two-key transfer atomic. Getting both is strict serializability. In a design, state each one separately: "the transfer needs a serializable transaction; reads after a write need read-your-writes consistency."
+
+Between strong and eventual lies a spectrum of consistency models:
+
+| Model | A reader sees | Typical mechanism |
+|---|---|---|
+| Linearizable | The latest acknowledged write | Leader or consensus on every read and write |
+| Causal | Effects never before their causes | Version vectors, logical clocks |
+| Read-your-writes | Their own writes | Read from the leader briefly after writing |
+| Monotonic reads | Nothing older than already seen | Sticky replica per session |
+| Bounded staleness | Data at most *t* seconds old | Skip replicas lagging past the bound |
+| Eventual | Some value; copies converge | Async replication plus a merge rule |
+
+Name the weakest model that keeps the invariant safe: "users see their own comment" needs read-your-writes, not linearizability.
+
+### What a guarantee costs once state is replicated: CAP and PACELC
+
+The table says what each guarantee means. CAP and PACELC say what the **linearizability** and **eventual consistency** rows cost once data has more than one copy. That cost is what turns a guarantee into concrete design choices.
+
+**CAP** uses three precise terms. 
+* **Consistency (C)** is linearizability, as defined above. 
+* **Availability (A)** means every request to a node that hasn't failed gets a non-error response, even if that node can't reach the others. 
+* **Partition tolerance (P)** means the guarantees hold while the network drops or delays messages. 
+
+A distributed system cannot opt out of partitions (dropped links, GC pauses and overloaded switches all look like one), so "CA" is not a real option. The theorem says only this: **during a network partition, a replicated service cannot both answer linearizably and complete every request at every node.** A node cut off from the others either waits or rejects (CP), or it answers from local state and reconciles later (AP).
+
+**PACELC** adds the normal case. If there is a **P**artition, choose **A** or **C**; **E**lse, choose **L**atency or **C**onsistency. Partitions are rare, but you pay for linearizability on every request: a synchronous write adds about 1–5 ms within a region and a full round trip (about 60–150 ms) across regions. This trade-off shapes everyday design more often than CAP does.
+
+This applies to **any copy of state**, not only databases: read replicas, a cache in front of the database, a second region, an offline mobile client, a search index fed by CDC. For each copy, ask: if it can't reach the authority, does it serve possibly stale data, or does it refuse?
+
+**Decide per invariant, not per system.** Treat CAP as a decision about **which operations wait, which reject, and which tolerate divergence**, not as "pick two letters". One product usually needs both, and each choice determines the patterns and implementation details beneath it:
+
+| Invariant | Guarantee | During a partition | What the choice requires in the design |
+|---|---|---|---|
+| A seat, item or username is claimed once | Linearizable per key | **CP:** the minority side rejects or waits | One authority per key ([consensus](tutorials/low-level-primitives/#consensus-raft-and-paxos) or a single leader), conditional writes, [fencing](tutorials/low-level-primitives/#leases-and-fencing-tokens), a "try again" path in the UX |
+| A card is charged once | Linearizable per key, plus idempotency | **CP** for the charge decision | [Operation IDs](tutorials/low-level-primitives/#operation-ids-idempotency-keys-and-deduplication) stored with the effect, reconciliation of unknown outcomes |
+| A withdrawal never overdraws | Check against the authority at write time | **CP** for the write; reads may be stale | A constraint or compare-and-swap on the owning store, not a check against a cached balance |
+| Cart contents, likes, presence | Eventual consistency with a merge rule | **AP:** accept locally, merge later | [CRDTs](tutorials/low-level-primitives/#crdts) or version vectors, [anti-entropy](tutorials/low-level-primitives/#gossip-and-anti-entropy), a defined conflict rule (and what last-writer-wins loses) |
+| Product pages, profiles, feeds | Eventual consistency with a staleness bound | **AP:** serve from local copies | [Read replicas](tutorials/low-level-primitives/#replication) or caches, TTL or invalidation, read-your-writes where users notice |
+
+**In an interview, walk the chain from top to bottom:**
+
+1. **Name the invariant and the cost of breaking it.** "Two users must never hold the same seat" is a different class of requirement from "the like count can be off by a few."
+2. **Pick the guarantee and the partition behavior, and say what the user sees.** For example: "If a region can't reach the seat's leader, it shows *try again*; browsing keeps working from local replicas."
+3. **State the normal-case (PACELC) cost.** For example: "Seat writes go to the event's home region, which adds about 80 ms for remote users. Reads come from local replicas and can be up to 1 s stale."
+4. **Only then name patterns and details.** Leader placement, quorum sizes, cache TTLs, conflict rules and retry behavior should each trace back to a guarantee you've already stated.
+
+**Common mistakes:**
+
+- **Saying "we choose CA."** That is only possible on a single node.
+- **Labeling a product "AP" or "CP".** Many stores let you choose consistency per request, so the label describes a configuration, not the product.
+- **Treating CAP availability as an uptime SLO.** A CP system that keeps serving from the majority side can still meet 99.99%; only clients cut off with the minority see errors.
+- **Saying "eventually consistent" without a merge rule or a staleness bound.** The table above lists both as things eventual consistency does not give you.
 
 ## The patterns you'll name most
 
@@ -226,80 +283,6 @@ Scatter-gather needs an explicit **completion rule**: all responses, a deadline,
 | [Control / data plane separation](tutorials/architectural-patterns/#control-plane-and-data-plane-separation) (H) | Management changes far less often than serving | Config propagation, stale state; data-plane requests must not call the control plane |
 | [Cells, deployment stamps](tutorials/architectural-patterns/#cells-and-deployment-stamps) (H) | Containing failures, overload and rollouts as you grow | Spare capacity, tenant moves, routing; a shared critical dependency defeats isolation |
 | [Multi-region](tutorials/architectural-patterns/#multi-region-architecture) (H–VH) | Latency, disaster recovery, data residency | WAN latency, failover ambiguity, conflicts, cost; active-active serving is not multi-writer data |
-
-## CRUD, CQRS, event sourcing and outbox are separate decisions
-
-These four are often blurred together. Each makes one decision:
-
-| Pattern | The decision it makes | What it does **not** require or guarantee |
-|---|---|---|
-| **CRUD** | Store and mutate current-state records | Does not prohibit auditing, domain commands, events or rich business rules |
-| **CQRS** | Use separate models for commands and queries | Does not require separate databases, event sourcing, messaging or eventual consistency |
-| **Event sourcing** | Govern state changes through an authoritative event history | Does not require replaying all history on every read; stored projections and snapshots are normal |
-| **Transactional outbox** | Commit the intent to publish atomically with a local state change | Does not put the consumer's changes in that transaction or guarantee exactly-once effects |
-
-CQRS can start as two models sharing one database. Event-sourced services usually store current state as snapshots (to rebuild an entity quickly) and projections (to answer queries).
-
-A common misreading: *"CRUD update → outbox → archived event log, therefore event sourcing."* **That sequence does not make the originating service event-sourced.** It is a CRUD service with a reliable downstream history. A service is event-sourced only when the event history is the authority that governs its domain changes.
-
-Two valid ways to publish changes, which different services in one application can mix:
-
-- **CRUD authority:** the command handler commits the business rows and an outbox row in one transaction; a relay publishes the outbox rows.
-- **Event authority:** the command handler validates against the aggregate's state and appends domain events with a version check; a durable subscription publishes them. That can replace a separate outbox, unless publishing is a second, unreliable write.
-
-Both feed the same transport, query projections and consumers. A workflow engine's execution history is not automatically the domain's event store.
-
-**Name records by their job**, not by the word "event". One database can hold all of these:
-
-| Record | Why it exists | Correctness rule |
-|---|---|---|
-| Entity row | Authoritative current state in a CRUD design | Updates keep the entity's invariants under concurrency |
-| Domain event stream | Governs state transitions in an event-sourced domain | Append at a known version; rebuild deterministically |
-| Audit log | Who did what, when | Captures the required evidence; need not rebuild state |
-| Outbox record | A publication owed by a committed transaction | A commit can never silently drop its publication |
-| Inbox record | Stops repeated consumer effects | Dedup and the effects commit together |
-| Idempotency record | One client operation and its outcome across retries | Same key returns a compatible outcome; mismatched reuse is rejected |
-| Query projection | A view materialized for reads | Defined progress and rebuild rules; readers accept its freshness |
-| Workflow state | Which business steps are done, pending or failed | Restart resumes safely without assuming remote calls didn't happen |
-
-## Failure cases that decide the design
-
-### Outbox and inbox, step by step
-
-An order change must cause an update in another service's database. Walk every crash point:
-
-| Failure point | Safe behavior | What makes it safe |
-|---|---|---|
-| Source transaction aborts | Neither the order change nor its publication happens | State and outbox row in one local transaction |
-| Source commits, service crashes before publishing | The outbox row is still there to deliver later | Durable outbox and a recovering relay |
-| Broker accepts, relay crashes before marking progress | The relay publishes again with the same event ID | At-least-once publishing plus downstream dedup |
-| Consumer crashes before committing | A later delivery retries the work | Broker redelivery or log replay |
-| Consumer commits, crashes before acking | The redelivery sees the effect already happened | Inbox ID and effects in one transaction |
-| An external API succeeds but the response is lost | Outcome unknown: retry with the same key or reconcile | The external API's idempotency or status contract |
-| A permanent error blocks progress | Surface the stuck work and repair or compensate | DLQ, workflow state, alerts, a human |
-
-The outbox closes the local dual-write gap; it is not a promise of delivery through permanent outages or deleted records. **Exactly-once effects exist only inside one atomic boundary.** A broker's guarantee does not cover your consumer's database, a payment processor or an email.
-
-### A saga is not a distributed rollback
-
-Each earlier step has already committed. Compensation is a new business action: a refund leaves a trail, may cost a fee, and can itself fail. Sagas also give no isolation, so other requests see intermediate states; model them explicitly with pending states or reservations.
-
-| Requirement | Suitable approach |
-|---|---|
-| Several records in one owner change together | A local transaction with suitable concurrency control |
-| A strict invariant keeps spanning proposed services | Redraw the boundary, or use a distributed transactional store |
-| A short atomic operation spans compatible participants | A distributed transaction, accepting its latency and availability cost |
-| A business process spans services or external systems over time | A durable saga or workflow with idempotent steps |
-| A resource can be held provisionally | Reservation / Try-Confirm-Cancel |
-
-An orchestrator is logically central but can be replicated and recover from durable state. Choreography removes the coordinator, not the coupling.
-
-## Numbers that constrain the design
-
-- **A queue does not create capacity.** By Little's Law, in-flight work is `N = λ × W`. At 10,000 operations/s and 0.2 s each, 2,000 are in flight; if latency grows to 2 s at the same throughput, 20,000 are. Admission control and bulkheads bound the damage.
-- **Backlogs grow at the gap.** When arrivals exceed completions, the backlog grows at roughly `λ − μ` per second until something drops or rejects work. Monitor the age of the oldest message and completion throughput, not just queue length.
-- **Fan-out multiplies tail latency.** If each of `n` branches is on time with probability `p`, all are on time with probability `pⁿ`. At `p = 0.99` and `n = 100`, only about 37% of requests finish on time. Bound fan-out and define partial results.
-- **Retries multiply.** Four nested layers that each try 3 times can send `3⁴ = 81` attempts to the deepest dependency for one request. Retry at one layer and use retry budgets.
 
 ## When to use what
 

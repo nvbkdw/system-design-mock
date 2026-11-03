@@ -13,7 +13,7 @@ The [overview chapter](tutorials/application-design-patterns/) maps the patterns
 
 Don't read it front to back. Jump to the pattern that comes up in your practice question, and use the numbers to back a trade-off out loud. The lower levels have their own chapters: [low-level primitives](tutorials/low-level-primitives/) (transactions, logs, consensus) and [infrastructure building blocks](tutorials/infrastructure-building-blocks/) (queues, outbox, caches, gateways).
 
-Keep the overview's rule in mind throughout: **decide who owns the authoritative state and which guarantee you need, then pick the smallest pattern that keeps that guarantee under the failures you must tolerate.** CRUD, CQRS, event sourcing and the outbox are [separate decisions](tutorials/application-design-patterns/#crud-cqrs-event-sourcing-and-outbox-are-separate-decisions); the sections below keep them separate.
+Keep the overview's rule in mind throughout: **decide who owns the authoritative state and which guarantee you need, then pick the smallest pattern that keeps that guarantee under the failures you must tolerate.** CRUD, CQRS, event sourcing and the outbox are [separate decisions](tutorials/architectural-patterns/#crud-cqrs-event-sourcing-and-outbox-are-separate-decisions); the sections below keep them separate.
 
 ## Application structure
 
@@ -308,11 +308,42 @@ Sources: [Cockburn, Hexagonal Architecture](https://alistair.cockburn.us/hexagon
 
 These patterns decide how state changes travel between owners and how reads are served.
 
+### CRUD, CQRS, event sourcing and outbox are separate decisions
+
+These four are often blurred together. Each makes one decision, and you can combine them freely:
+
+| Pattern | The decision it makes | What it does **not** require or guarantee |
+|---|---|---|
+| **CRUD** | Store and change current-state records | Does not rule out auditing, domain commands, events or rich business rules |
+| **CQRS** | Use separate models for commands and queries | Does not require separate databases, event sourcing, messaging or eventual consistency |
+| **Event sourcing** | Make an event history the authority for state changes | Does not require replaying all history on every read; snapshots and projections are normal |
+| **[Transactional outbox](tutorials/infrastructure-building-blocks/#transactional-outbox)** | Commit the intent to publish atomically with a local state change | Does not put the consumer's changes in that transaction or guarantee exactly-once effects |
+
+**A common misreading:** *"CRUD update → outbox → archived event log, therefore event sourcing."* That sequence is a CRUD service with a reliable downstream history. A service is event-sourced only when the event history is the authority that governs its domain changes. Likewise, a workflow engine's execution history is not the domain's event store.
+
+**Two valid ways to publish changes.** Services in one application can mix them, and both feed the same transport, projections and consumers:
+
+- **CRUD authority:** the command handler commits the business rows and an outbox row in one transaction; a relay publishes the outbox rows.
+- **Event authority:** the command handler validates against the aggregate's state and appends domain events with a version check; a durable subscription publishes them. That replaces a separate outbox, unless publishing is a second, unreliable write.
+
+**Name records by their job**, not by the word "event". One database can hold all of these:
+
+| Record | Why it exists | Correctness rule |
+|---|---|---|
+| Entity row | Authoritative current state in a CRUD design | Updates keep the entity's invariants under concurrency |
+| Domain event stream | Governs state changes in an event-sourced domain | Append at a known version; rebuild deterministically |
+| Audit log | Who did what, when | Captures the required evidence; need not rebuild state |
+| Outbox record | A publication owed by a committed transaction | A commit can never silently drop its publication |
+| Inbox record | Stops repeated consumer effects | Dedup and the effects commit together |
+| Idempotency record | One client operation and its outcome across retries | Same key returns a compatible outcome; mismatched reuse is rejected |
+| Query projection | A view materialized for reads | Defined progress and rebuild rules; readers accept its freshness |
+| Workflow state | Which business steps are done, pending or failed | Restart resumes safely without assuming remote calls didn't happen |
+
 ### Event-driven integration
 
 **What it is.** Services communicate by publishing facts about what happened ("OrderPlaced") to a broker, and other services react on their own schedule. The publisher doesn't know or wait for its consumers.
 
-**How it works.** The producer commits a state change and, through a [transactional outbox](tutorials/application-design-patterns/#outbox-and-inbox-step-by-step) or a durable event store, publishes an event to a topic. Each consumer group reads at its own pace, dedupes by event ID, and updates its own data. Events come in two shapes:
+**How it works.** The producer commits a state change and, through a [transactional outbox](tutorials/infrastructure-building-blocks/#transactional-outbox) or a durable event store, publishes an event to a topic. Each consumer group reads at its own pace, dedupes by event ID, and updates its own data. Events come in two shapes:
 
 | Shape | Payload | Consumer does | Trade-off |
 |---|---|---|---|
@@ -452,7 +483,15 @@ Sources: [Fowler, Event Sourcing](https://martinfowler.com/eaaDev/EventSourcing.
 
 ## Business coordination
 
-These patterns coordinate work that spans owners, services or time.
+These patterns coordinate work that spans owners, services or time. Before reaching for one, check whether a smaller tool keeps the invariant:
+
+| Requirement | Suitable approach |
+|---|---|
+| Several records in one owner change together | A [local transaction](tutorials/low-level-primitives/#local-transactions-and-constraints) with suitable concurrency control |
+| A strict invariant keeps spanning proposed services | Redraw the service boundary, or use a distributed transactional store |
+| A short atomic operation spans compatible participants | [Two-phase commit](tutorials/low-level-primitives/#two-phase-commit), accepting its latency and availability cost |
+| A business process spans services or external systems over time | A durable saga or workflow with idempotent steps |
+| A resource can be held provisionally | [Reservation / Try-Confirm-Cancel](#reservation-and-try-confirm-cancel) |
 
 ### Saga orchestration
 
@@ -508,7 +547,7 @@ sequenceDiagram
 **Trade-offs and failure modes.**
 
 - No isolation: other requests see intermediate states. Model them (`PAYMENT_PENDING`) or use reservations.
-- Compensations can fail or be impossible (an email was sent). Make them idempotent and retryable, and alert on stuck sagas.
+- **A saga is not a distributed rollback.** Every earlier step has already committed, so a compensation is a new business action: a refund leaves a trail, may cost a fee, and can itself fail or be impossible (an email was sent). Make compensations idempotent and retryable, and alert on stuck sagas.
 - Workflow code changes need versioning; in-flight sagas still run the old logic.
 - The orchestrator is logically central but can be replicated; its store is the real dependency.
 
